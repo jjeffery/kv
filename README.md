@@ -1,4 +1,4 @@
-# kv [![GoDoc](https://godoc.org/github.com/jjeffery/kv?status.svg)](https://godoc.org/github.com/jjeffery/kv)
+# kv [![GoDoc](https://godoc.org/github.com/jjeffery/kv?status.svg)](https://godoc.org/github.com/jjeffery/kv) [![License](http://img.shields.io/badge/license-MIT-green.svg?style=flat)](https://raw.githubusercontent.com/jjeffery/kv/master/LICENSE.md)
 
 Package kv improves type safety when working with variadic key value pairs.
 
@@ -57,16 +57,16 @@ logger.Log(kv.Map{
     "err":       err,
 })
 ```
-Many alternatives are possible, depending on the preferences:
+Many alternatives are possible, depending on preferences:
 
 ```go
 logger.Log("method", "GetAddress",
     kv.P("profileID", profileID),
-	kv.P("addressID", addressID"),
-	kv.Keyvals{
-		"took", time.Since(begin),
-		err,
-	})
+    kv.P("addressID", addressID"),
+    kv.Keyvals{
+        "took", time.Since(begin),
+        err, // missing key
+    })
 ```
 
 The kv package is pretty good at picking up errors: in the last example
@@ -74,7 +74,7 @@ it will figure out that `err` is missing its keyword and will insert one.
 
 This is only a very simple introduction to what is possible with this
 package. There are many more examples in the 
-[GoDoc](https://godoc.org/github.com/jjeffery/kv/#example_Flatten) documentation.
+[GoDoc](https://godoc.org/github.com/jjeffery/kv#example-Flatten) documentation.
 
 
 # Logging facade
@@ -92,6 +92,3 @@ func (f *logFacade) Log(keyvals ...interface{}) {
 	f.logger.Log(kv.Flatten(keyvals)...)
 }
 ```
-
-
-
