@@ -55,7 +55,7 @@ func Example() {
 	// msg="not found" id=42
 }
 
-func ExampleKeyvals(logger Logger) {
+func ExampleKeyvals() {
 	var result string
 	var count int
 
@@ -71,7 +71,23 @@ func getResultAndCount() (string, int) {
 	return "", 0
 }
 
-func ExamplePair(logger Logger) {
+func ExamplePair() {
+	var result string
+	var count int
+
+	result, count = getResultAndCount()
+
+	logger.Log(
+		kv.Pair{"result", result},
+		kv.Pair{"count", count})
+
+	// this alternative requires slightly less typing
+	logger.Log(
+		kv.P("result", result),
+		kv.P("count", count))
+}
+
+func ExampleP() {
 	var result string
 	var count int
 
@@ -82,18 +98,7 @@ func ExamplePair(logger Logger) {
 		kv.P("count", count))
 }
 
-func ExampleP(logger Logger) {
-	var result string
-	var count int
-
-	result, count = getResultAndCount()
-
-	logger.Log(
-		kv.P("result", result),
-		kv.P("count", count))
-}
-
-func ExampleMap(logger Logger) {
+func ExampleMap() {
 	var result string
 	var count int
 
@@ -103,6 +108,11 @@ func ExampleMap(logger Logger) {
 		"result": result,
 		"count":  count,
 	})
+
+	// The output will be either
+	//   result="result here" count=1
+	// or
+	//   count=1 result="result here"
 }
 
 func ExampleFlatten() {

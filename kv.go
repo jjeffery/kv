@@ -1,50 +1,3 @@
-// Package kv is used to make working with slices of key value pairs
-// type safe.
-//
-// Structured logging
-//
-// Structured logging is a popular logging technique where log messages
-// are acknowleged as data, and should be machine parseable. Logs entries
-// consist of a stricter key/value oriented message format.
-//
-// A consequence is that logging APIs accept key/value pairs as an alternative
-// to the more traditional printf-style APIs.
-//
-//  // unstructured
-//  log.Printf("HTTP server listening on %s", addr)
-//
-//  // structured
-//  logger.Log("msg", "server listening", "transport", "HTTP", "addr", addr)
-//
-// Keyvals
-//
-// Many structured logging APIs make use of the "keyvals" API, where keys
-// and values are passed as alternating arguments in a variadic array of
-// interface{}. The simplest API comes from go-kit:
-//
-//   type Logger interface {
-//	     Log(keyvals ...interface{})
-//   }
-//
-// Package kv
-//
-// While there is great flexibility and power in this variadic interface,
-// one downside is the loss of any strict type checking. Package kv goes
-// some way towards restoring type safety.
-//
-// The following example (taken from Go kit) is a fairly typical example.
-// It is not obvious at first site if any arguments have been omitted and
-// the compiler does not provide any assistance.
-//  logger.Log("method", "GetAddress", "profileID", profileID, "addressID", addressID, "took", time.Since(begin), "err", err)
-// The same call can be written with more type safety (but more verbosely):
-//  logger.Log(kv.Map{
-//      "method":    "GetAddress",
-//      "profileID": profileID,
-//      "addressID": addressID,
-//      "took":      time.Since(begin),
-//      "err":       err,
-//  })
-//
 package kv
 
 import (
@@ -65,7 +18,7 @@ func (d debugT) Printf(format string, v ...interface{}) {
 }
 */
 
-// The keyvalsAppender interface is used for appendings key/value pairs
+// The keyvalsAppender interface is used for appending key/value pairs
 type keyvalsAppender interface {
 	appendKeyvals(keyvals []interface{}) []interface{}
 }
@@ -76,15 +29,16 @@ type keyvalser interface {
 	Keyvals() []interface{}
 }
 
-// Keyvals is a variadic slice of alternating keys
-// and values.
+// Keyvals is a variadic slice of alternating keys and values.
 type Keyvals []interface{}
 
+// Pair represents a single key/value pair.
 type Pair struct {
 	Key   string
 	Value interface{}
 }
 
+// P returns a key/value pair.
 func P(key string, value interface{}) Pair {
 	return Pair{
 		Key:   key,
@@ -96,6 +50,11 @@ func (p Pair) appendKeyvals(keyvals []interface{}) []interface{} {
 	return append(keyvals, p.Key, p.Value)
 }
 
+// Map is a map of keys to values.
+//
+// Note that when a map is appended to a keyvals list of alternating
+// keys and values, there is no guarantee of the order that the key/value
+// pairs will be appended.
 type Map map[string]interface{}
 
 func (m Map) appendKeyvals(keyvals []interface{}) []interface{} {
@@ -113,6 +72,15 @@ func isOdd(i int) bool {
 	return (i & 0x01) != 0
 }
 
+// Flatten accepts a keyvals slice and "flattens" it into a slice
+// of alternating key/value pairs. See the examples.
+//
+// Flatten will also check the result to ensure it is a valid
+// slice of key/value pairs according to the following rules.
+//  * Must have an even number of items in the slice
+//  * Items at even indexes must be strings
+// Flatten will insert keys into the array to ensure that the returned
+// slice conforms.
 func Flatten(keyvals []interface{}) []interface{} {
 	const keyMsg = "msg"
 	const keyError = "error"
@@ -226,6 +194,9 @@ func Flatten(keyvals []interface{}) []interface{} {
 	return output
 }
 
+// The missingKeyT type is used as a placeholder for missing keys.
+// Once all the missing keys are inserted, they are numbered from left
+// to right.
 type missingKeyT string
 
 func flatten(output []interface{}, input []interface{}, missingKeyName func(interface{}) interface{}) []interface{} {
@@ -320,7 +291,7 @@ func flattenScalars(output []interface{}, input []interface{}, missingKeyName fu
 			case string:
 				if _, ok := knownKeys[v]; ok {
 					classifications[i] = stringKey
-				} else if probableKeyRE.MatchString(v) {
+				} else if possibleKeyRE.MatchString(v) {
 					classifications[i] = stringPossibleKey
 				} else {
 					classifications[i] = stringValue
@@ -394,7 +365,7 @@ func flattenScalars(output []interface{}, input []interface{}, missingKeyName fu
 	return output
 }
 
-var probableKeyRE = regexp.MustCompile(`^[a-zA-Z_][a-zA-Z0-9_]*$`)
+var possibleKeyRE = regexp.MustCompile(`^[a-zA-Z_][a-zA-Z0-9_]*$`)
 
 func insertKeyAt(input []interface{}, index int, keyName interface{}) []interface{} {
 	newInput := make([]interface{}, 0, len(input)+1)
