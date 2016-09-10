@@ -6,6 +6,7 @@ Package kv makes it easy to work with lists of key/value pairs.
 - [Flattening](#flattening)
 - [Fixing](#fixing)
 - [Extending](#extending)
+- [Performance](#performance)
 
 ## Structured logging
 
@@ -130,6 +131,51 @@ if err := doSomethingWith(theThing); err != nil {
 logger.Log(err)
 
 ```
+
+## Performance
+
+To date, the `kv` package has only been used in applications where peak 
+logging rates are of the order of a few log messages per second. Because
+performance has not been an issue, no serious time has been spent
+analyzing and tuning for performance. The following discussion is based
+on best guesses.
+
+When constructing the variadic key/value lists, the `kv.P` function is the
+fastest because it does not require any memory allocation. Using  `kv.Map` 
+and `kv.Keyvals` has the overhead of allocating a map and array respectively.
+
+The `kv.Flatten` function does not allocate any memory if the input keyvals
+do not require any modification: it will return the input slice unchanged.
+If high volume messages are already in valid "keyvals" format then using
+package `kv` for lower volume error messages should not impact performance
+significantly.
+
+When the keyvals input has to be flattened and/or fixed, the `kv.Flatten` 
+package has to allocate a new slice with a new backing array for the output.
+Under some circumstances it also allocates temporary slices. It would be 
+straightforward to create a new flattening function that delegates memory
+allocation. Something like:
+
+```go
+type Pool interface {
+	Get() []interface{} // fixed size; say length 64
+	Put([]interface{})
+}
+
+func FlattenPool(input ...interface{}, pool Pool) []interface{}
+```
+
+The `keyvalser` interface may involve memory allocations depending on the
+structure of the object that implements it. The `kv.List`, `kv.Map` and 
+`kv.Pair` types all implement the `keyvalser` interface, but the
+`kv.Flatten` function makes special exceptions for them and extracts 
+their contents without allocating memory.
+
+Type switches are another source of overhead. The `kv.Flatten` function
+performs a type switch on every item in the input slice in order to decide 
+if flattening or fixing is required. This type switching occurs even if the 
+input does not require any modification. (TODO: run some benchmarks to
+quantify this overhead).
 
 ## License
 
