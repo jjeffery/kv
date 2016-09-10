@@ -77,7 +77,7 @@ If a value is present without a key it will assign it an arbitrary one.
  // ["msg", "message 2", "key3", 3, "_p1", 4]
  keyvals = kv.Flatten("msg", "message 3", "key3", 3, 4)
 
-A single error gets turned into a message (but see *Extending* below).
+A single error gets turned into a message (but see "Extending" below).
 
  // ["msg", "the error message"]
  keyvals = kv.Flatten(err)
@@ -94,7 +94,7 @@ is a list of key/value pairs.
      Keyvals() []interface{}
  }
 
-For example, errors generated using the github.com/jjeffery/errorv package
+For example, errors generated using the "github.com/jjeffery/errorv" package
 implement the keyvalser interface:
 
  if err := doSomethingWith(theThing); err != nil {
