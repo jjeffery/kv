@@ -18,19 +18,24 @@ func (d debugT) Printf(format string, v ...interface{}) {
 }
 */
 
-// The keyvalsAppender interface is used for appending key/value pairs
-type keyvalsAppender interface {
-	appendKeyvals(keyvals []interface{}) []interface{}
-}
-
 // The keyvalser interface returns a slice of alternating keys
 // and values.
 type keyvalser interface {
 	Keyvals() []interface{}
 }
 
+// The keyvalsAppender interface is used for appending key/value pairs.
+type keyvalsAppender interface {
+	appendKeyvals(keyvals []interface{}) []interface{}
+}
+
 // Keyvals is a variadic slice of alternating keys and values.
 type Keyvals []interface{}
+
+// Keyvals implements the keyvalser interface.
+func (s Keyvals) Keyvals() []interface{} {
+	return []interface{}(s)
+}
 
 // Pair represents a single key/value pair.
 type Pair struct {
@@ -46,6 +51,12 @@ func P(key string, value interface{}) Pair {
 	}
 }
 
+// Keyvals returns the pair's key and value as a slice of interface{}.
+// Keyvals implements the keyvalser interface.
+func (p Pair) Keyvals() []interface{} {
+	return []interface{}{p.Key, p.Value}
+}
+
 func (p Pair) appendKeyvals(keyvals []interface{}) []interface{} {
 	return append(keyvals, p.Key, p.Value)
 }
@@ -56,6 +67,16 @@ func (p Pair) appendKeyvals(keyvals []interface{}) []interface{} {
 // keys and values, there is no guarantee of the order that the key/value
 // pairs will be appended.
 type Map map[string]interface{}
+
+// Keyvals returns the contents of the map as a list of alternating
+// key/value pairs. It implements the keyvalser interface.
+func (m Map) Keyvals() []interface{} {
+	keyvals := make([]interface{}, 0, len(m)*2)
+	for k, v := range m {
+		keyvals = append(keyvals, k, v)
+	}
+	return keyvals
+}
 
 func (m Map) appendKeyvals(keyvals []interface{}) []interface{} {
 	for key, value := range m {
