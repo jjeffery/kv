@@ -66,11 +66,11 @@ A logging facade for the Go kit `Logger` interface looks like this:
 
 ```go
 type logFacade struct {
-	logger log.Logger
+    logger log.Logger
 }
 
 func (f *logFacade) Log(keyvals ...interface{}) {
-	f.logger.Log(kv.Flatten(keyvals)...)
+    f.logger.Log(kv.Flatten(keyvals)...)
 }
 ```
 
@@ -121,7 +121,7 @@ implement the `keyvalser` interface:
 
 ```go
 if err := doSomethingWith(theThing); err != nil {
-	return errorv.Wrap(err, "cannot do something", kv.P("theThing", theThing))
+    return errorv.Wrap(err, "cannot do something", kv.P("theThing", theThing))
 }
 
 // ...later on when we log the error ...
