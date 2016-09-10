@@ -62,7 +62,7 @@ func TestFlatten(t *testing.T) {
 		},
 		{
 			v: []interface{}{
-				Keyvals{
+				List{
 					Map{
 						"key1": "val1",
 					},
@@ -70,8 +70,8 @@ func TestFlatten(t *testing.T) {
 					"key3", 3.0,
 				},
 				"key4", "4",
-				Keyvals{
-					Keyvals{
+				List{
+					List{
 						P("key5", 5),
 					},
 				},

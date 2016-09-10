@@ -29,12 +29,12 @@ type keyvalsAppender interface {
 	appendKeyvals(keyvals []interface{}) []interface{}
 }
 
-// Keyvals is a variadic slice of alternating keys and values.
-type Keyvals []interface{}
+// List is a slice of alternating keys and values.
+type List []interface{}
 
 // Keyvals implements the keyvalser interface.
-func (s Keyvals) Keyvals() []interface{} {
-	return []interface{}(s)
+func (l List) Keyvals() []interface{} {
+	return []interface{}(l)
 }
 
 // Pair represents a single key/value pair.
@@ -127,7 +127,7 @@ func Flatten(keyvals []interface{}) []interface{} {
 		case Pair:
 			requiresFlattening = true
 			estimatedLen += 2
-		case Keyvals:
+		case List:
 			requiresFlattening = true
 			// TODO(jpj): recursively descending into the keyvals
 			// will come up with a reasonably length estimate, but
@@ -230,7 +230,7 @@ func flatten(output []interface{}, input []interface{}, missingKeyName func(inte
 
 		// At this point the first item in the input is a KeyvalsAppender.
 		switch v := input[0].(type) {
-		case Keyvals:
+		case List:
 			// Treat the Keyvals type as an interface{} slice on its own
 			// because it may need flattening and inserting of keys.
 			output = flatten(output, []interface{}(v), missingKeyName)
@@ -255,7 +255,7 @@ func countNonKeyvalAppenders(input []interface{}) int {
 		switch input[i].(type) {
 		case keyvalsAppender:
 			return i
-		case Keyvals:
+		case List:
 			return i
 		case keyvalser:
 			return i

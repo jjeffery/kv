@@ -61,7 +61,7 @@ func ExampleKeyvals() {
 
 	result, count = getResultAndCount()
 
-	logger.Log(kv.Keyvals{
+	logger.Log(kv.List{
 		"result", result,
 		"count", count,
 	})
@@ -137,7 +137,7 @@ func ExampleFlatten() {
 
 	// A more complex, and probably unrealistic example of mixing styles.
 	log("message3",
-		kv.Keyvals{
+		kv.List{
 			"key1", 1,
 			"key2", 2,
 		},
