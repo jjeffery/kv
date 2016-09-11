@@ -24,6 +24,11 @@ type keyvalser interface {
 	Keyvals() []interface{}
 }
 
+// The keyvalPairer interface returns a single key/value pair.
+type keyvalPairer interface {
+	KeyvalPair() (key string, value interface{})
+}
+
 // The keyvalsAppender interface is used for appending key/value pairs.
 type keyvalsAppender interface {
 	appendKeyvals(keyvals []interface{}) []interface{}
@@ -56,6 +61,14 @@ func P(key string, value interface{}) Pair {
 func (p Pair) Keyvals() []interface{} {
 	return []interface{}{p.Key, p.Value}
 }
+
+/*
+// KeyvalPair returns the pair's key and value. This implements
+// the keyvalsPairer interface.
+func (p Pair) KeyvalPair() (key string, value interface{}) {
+	return p.Key, p.Value
+}
+*/
 
 func (p Pair) appendKeyvals(keyvals []interface{}) []interface{} {
 	return append(keyvals, p.Key, p.Value)
@@ -138,6 +151,9 @@ func Flatten(keyvals []interface{}) []interface{} {
 			// for now just double the number of elements in the slice
 			// and this is probably accurate enough.
 			estimatedLen = len(v) * 2
+		case keyvalPairer:
+			requiresFlattening = true
+			estimatedLen += 2
 		case keyvalsAppender:
 			requiresFlattening = true
 			// some unknown Keyvals appender: not possible to estimate
@@ -255,6 +271,11 @@ func flatten(output []interface{}, input []interface{}, missingKeyName func(inte
 			// append a valid key/value pairs, so no checking. This could
 			// change if it ever became a public interface.
 			output = v.appendKeyvals(output)
+		case keyvalPairer:
+			{
+				key, value := v.KeyvalPair()
+				output = append(output, key, value)
+			}
 		case keyvalser:
 			// The Keyvals method does not guarantee to return a valid
 			// key/value list, so flatten and fix it as if this slice
@@ -280,13 +301,15 @@ func countScalars(input []interface{}) int {
 			return i
 		case keyvalser:
 			return i
+		case keyvalPairer:
+			return i
 		}
 	}
 	return len(input)
 }
 
-// flattenScalars adjusts a list of items, none of which are keyvalsers or
-// keyvalsAppenders.
+// flattenScalars adjusts a list of items, none of which are keyvalsers,
+// keyvalsAppenders, or keyvalPairs.
 //
 // Ideally the list will have an even number of items, with strings in the
 // even indices. If it doesn't, this method will fix it.
