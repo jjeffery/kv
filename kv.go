@@ -103,9 +103,12 @@ func isOdd(i int) bool {
 // Flatten will insert keys into the array to ensure that the returned
 // slice conforms.
 func Flatten(keyvals []interface{}) []interface{} {
-	const keyMsg = "msg"
-	const keyError = "error"
-	const keyMissingPrefix = "_p"
+	// opinionated constants for names of keys
+	const (
+		keyMsg           = "msg"
+		keyError         = "error"
+		keyMissingPrefix = "_p"
+	)
 
 	// Indicates whether the keyvals slice needs to be flattened.
 	// Start with true if it has an odd number of items.
@@ -116,7 +119,8 @@ func Flatten(keyvals []interface{}) []interface{} {
 	var estimatedLen int
 
 	// Do the keyvals include a "msg" key. This is not entirely
-	// reliable if the "msg" is supposed to be a value.
+	// reliable if the "msg" is supposed to be a value, but it
+	// is only used as a heuristic for naming any missing keys.
 	var haveMsg bool
 
 	for i, val := range keyvals {
@@ -137,7 +141,8 @@ func Flatten(keyvals []interface{}) []interface{} {
 		case keyvalsAppender:
 			requiresFlattening = true
 			// some unknown Keyvals appender: not possible to estimate
-			// so just use a constant.
+			// so just use a constant. More than 4 key/value pairs is
+			// uncommon.
 			estimatedLen += 8
 		case keyvalser:
 			requiresFlattening = true
@@ -151,7 +156,8 @@ func Flatten(keyvals []interface{}) []interface{} {
 		default:
 			estimatedLen++
 			if isEven(i) {
-				// will probably need another item in the array
+				// Non-string in an even position could mean a missing
+				// key name in the list.
 				estimatedLen++
 				requiresFlattening = true
 			}
@@ -159,9 +165,14 @@ func Flatten(keyvals []interface{}) []interface{} {
 	}
 
 	if !requiresFlattening {
+		// Nothing to do, so return the input unmodified.
 		return keyvals
 	}
 
+	// The missingKey function is passed recursively to flattening
+	// and fixing functions. After flattening and fixing we know if
+	// one or more missing keys have been inserted, and then we know
+	// to iterate through and name them in order.
 	var hasMissingKeys bool
 	missingKey := func(v interface{}) interface{} {
 		hasMissingKeys = true
@@ -171,10 +182,15 @@ func Flatten(keyvals []interface{}) []interface{} {
 	// In most circumstances this output slice will have the
 	// required capacity.
 	output := make([]interface{}, 0, estimatedLen)
+
+	// Perform the actual flattening and fixing.
 	output = flatten(output, keyvals, missingKey)
 
+	// If there were any missing keys inserted, iterate through the
+	// list and name them. Doing this last allows the names to be
+	// ordered from left to right.
 	if hasMissingKeys {
-		counter := 0
+		counter := 0 // used for counting _p1, _p2, etc
 		for i, v := range output {
 			if _, ok := v.(missingKeyT); ok {
 				// assign a name for the missing key, depends on the type
@@ -222,21 +238,27 @@ type missingKeyT string
 
 func flatten(output []interface{}, input []interface{}, missingKeyName func(interface{}) interface{}) []interface{} {
 	for len(input) > 0 {
-		if i := countNonKeyvalAppenders(input); i > 0 {
+		// Process any leading scalars. A scalar is any single value,
+		// ie not a keyvalsAppender and not a keyvalser. This makes it
+		// easy to figure out any missing key names.
+		if i := countScalars(input); i > 0 {
 			output = flattenScalars(output, input[:i], missingKeyName)
 			input = input[i:]
 			continue
 		}
 
-		// At this point the first item in the input is a KeyvalsAppender.
+		// At this point the first item in the input is a keyvalsAppender
+		// or a keyvalser.
 		switch v := input[0].(type) {
-		case List:
-			// Treat the Keyvals type as an interface{} slice on its own
-			// because it may need flattening and inserting of keys.
-			output = flatten(output, []interface{}(v), missingKeyName)
 		case keyvalsAppender:
+			// The contract with appendKeyvals is that it promises to
+			// append a valid key/value pairs, so no checking. This could
+			// change if it ever became a public interface.
 			output = v.appendKeyvals(output)
 		case keyvalser:
+			// The Keyvals method does not guarantee to return a valid
+			// key/value list, so flatten and fix it as if this slice
+			// had been passed to the Flatten function in the first place.
 			output = flatten(output, v.Keyvals(), missingKeyName)
 		default:
 			//panic("cannot happen")
@@ -248,14 +270,13 @@ func flatten(output []interface{}, input []interface{}, missingKeyName func(inte
 	return output
 }
 
-// countNonKeyvalAppenders returns the count of items in input up to but
-// not including the first KeyvalsAppender.
-func countNonKeyvalAppenders(input []interface{}) int {
+// countScalars returns the count of items in input up to but
+// not including the first non-scalar item. A scalar is a single
+// value item, ie not a keyvalser and not a keyvalsAppender.
+func countScalars(input []interface{}) int {
 	for i := 0; i < len(input); i++ {
 		switch input[i].(type) {
 		case keyvalsAppender:
-			return i
-		case List:
 			return i
 		case keyvalser:
 			return i
@@ -264,10 +285,16 @@ func countNonKeyvalAppenders(input []interface{}) int {
 	return len(input)
 }
 
-// flattenScalars adjusts a list of items, none of which are KeyvalsAppenders.
+// flattenScalars adjusts a list of items, none of which are keyvalsers or
+// keyvalsAppenders.
+//
 // Ideally the list will have an even number of items, with strings in the
 // even indices. If it doesn't, this method will fix it.
-func flattenScalars(output []interface{}, input []interface{}, missingKeyName func(interface{}) interface{}) []interface{} {
+func flattenScalars(
+	output []interface{},
+	input []interface{},
+	missingKeyName func(interface{}) interface{},
+) []interface{} {
 	for len(input) > 0 {
 		var needsFixing bool
 
