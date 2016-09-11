@@ -27,11 +27,11 @@ var logger = struct {
 
 var id = 42
 
-type recordT struct {
+type Record struct {
 	sku, location, color, pickingCode string
 }
 
-func LookupSomething(id int) (*recordT, bool) {
+func LookupSomething(id int) (*Record, bool) {
 	return nil, false
 }
 
@@ -55,7 +55,7 @@ func Example() {
 	// msg="not found" id=42
 }
 
-func ExampleKeyvals() {
+func ExampleList() {
 	var result string
 	var count int
 
@@ -77,11 +77,13 @@ func ExamplePair() {
 
 	result, count = getResultAndCount()
 
+	// go vet warns: "composite literal uses unkeyed fields"
 	logger.Log(
 		kv.Pair{"result", result},
 		kv.Pair{"count", count})
 
 	// this alternative requires slightly less typing
+	// and avoids the go vet warning
 	logger.Log(
 		kv.P("result", result),
 		kv.P("count", count))
