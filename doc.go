@@ -105,5 +105,43 @@ implement the keyvalser interface:
 
  // msg="cannot do something" cause="file not found" theThing="the thing"
  logger.Log(err)
+
+The current implementation also recognises the following interfaces, as
+they can be easier to implement, and/or more memory efficient.
+
+
+ type keyvalPairer interface {
+     KeyvalPair() (key string, value interface{})
+ }
+
+ type keyvalMapper interface {
+     KeyvalMap() map[string]interface{}
+ }
+
+This makes it easy to define standard logging for types. For example:
+
+ type User struct {
+     ID string
+
+     // ... other fields ...
+ }
+
+ func (u *User) KeyvalPair() (string, interface{}) {
+     return "userID", u.ID
+ }
+
+ // ... later on ...
+
+ func doSomethingWithUser(u *User) {
+     if !hasPermission(u) {
+         // msg="permission denied" userID=1234
+         logger.Log("permission denied", u)
+     }
+ }
+
+The keyvalPairer and keyvalMapper interfaces seem like a good idea,
+but have not been used all that much. If they do not prove all that useful
+they *might* be removed in favor of simplicity.
+
 */
 package kv

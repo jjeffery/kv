@@ -29,7 +29,14 @@ type keyvalPairer interface {
 	KeyvalPair() (key string, value interface{})
 }
 
+// The keyvalMapper interface returns a map of keys to values.
+type keyvalMapper interface {
+	KeyvalMap() map[string]interface{}
+}
+
 // The keyvalsAppender interface is used for appending key/value pairs.
+// This is an internal interface: the promise is that it will only
+// append valid key/value pairs.
 type keyvalsAppender interface {
 	appendKeyvals(keyvals []interface{}) []interface{}
 }
@@ -48,7 +55,12 @@ type Pair struct {
 	Value interface{}
 }
 
-// P returns a key/value pair.
+// P returns a key/value pair. The following alternatives are equivalent:
+//  kv.Pair{key, value}
+//  kv.P(key, value)
+// The second alternative is slightly less typing, and avoids
+// the following go vet warning:
+//  composite literal uses unkeyed fields
 func P(key string, value interface{}) Pair {
 	return Pair{
 		Key:   key,
@@ -56,11 +68,13 @@ func P(key string, value interface{}) Pair {
 	}
 }
 
+/*
 // Keyvals returns the pair's key and value as a slice of interface{}.
 // Keyvals implements the keyvalser interface.
 func (p Pair) Keyvals() []interface{} {
 	return []interface{}{p.Key, p.Value}
 }
+*/
 
 /*
 // KeyvalPair returns the pair's key and value. This implements
@@ -81,6 +95,7 @@ func (p Pair) appendKeyvals(keyvals []interface{}) []interface{} {
 // pairs will be appended.
 type Map map[string]interface{}
 
+/*
 // Keyvals returns the contents of the map as a list of alternating
 // key/value pairs. It implements the keyvalser interface.
 func (m Map) Keyvals() []interface{} {
@@ -90,6 +105,7 @@ func (m Map) Keyvals() []interface{} {
 	}
 	return keyvals
 }
+*/
 
 func (m Map) appendKeyvals(keyvals []interface{}) []interface{} {
 	for key, value := range m {
@@ -159,6 +175,9 @@ func Flatten(keyvals []interface{}) []interface{} {
 			// some unknown Keyvals appender: not possible to estimate
 			// so just use a constant. More than 4 key/value pairs is
 			// uncommon.
+			estimatedLen += 8
+		case keyvalMapper:
+			requiresFlattening = true
 			estimatedLen += 8
 		case keyvalser:
 			requiresFlattening = true
@@ -252,28 +271,35 @@ func Flatten(keyvals []interface{}) []interface{} {
 // to right.
 type missingKeyT string
 
-func flatten(output []interface{}, input []interface{}, missingKeyName func(interface{}) interface{}) []interface{} {
+func flatten(
+	output []interface{},
+	input []interface{},
+	missingKeyName func(interface{}) interface{},
+) []interface{} {
 	for len(input) > 0 {
 		// Process any leading scalars. A scalar is any single value,
-		// ie not a keyvalsAppender and not a keyvalser. This makes it
-		// easy to figure out any missing key names.
+		// ie not a keyvalsAppender, keyvalser, keyvalPairer or keyvalMapper.
+		// This makes it easier to figure out any missing key names.
 		if i := countScalars(input); i > 0 {
 			output = flattenScalars(output, input[:i], missingKeyName)
 			input = input[i:]
 			continue
 		}
 
-		// At this point the first item in the input is a keyvalsAppender
-		// or a keyvalser.
+		// At this point the first item in the input is a keyvalsAppender,
+		// keyvalser, keyvalPairer, or keyvalMapper.
 		switch v := input[0].(type) {
 		case keyvalsAppender:
 			// The contract with appendKeyvals is that it promises to
-			// append a valid key/value pairs, so no checking. This could
-			// change if it ever became a public interface.
+			// append a valid key/value pairs, so no checking.
 			output = v.appendKeyvals(output)
 		case keyvalPairer:
 			{
 				key, value := v.KeyvalPair()
+				output = append(output, key, value)
+			}
+		case keyvalMapper:
+			for key, value := range v.KeyvalMap() {
 				output = append(output, key, value)
 			}
 		case keyvalser:
@@ -297,11 +323,7 @@ func flatten(output []interface{}, input []interface{}, missingKeyName func(inte
 func countScalars(input []interface{}) int {
 	for i := 0; i < len(input); i++ {
 		switch input[i].(type) {
-		case keyvalsAppender:
-			return i
-		case keyvalser:
-			return i
-		case keyvalPairer:
+		case keyvalsAppender, keyvalser, keyvalPairer, keyvalMapper:
 			return i
 		}
 	}

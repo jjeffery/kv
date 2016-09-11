@@ -132,6 +132,48 @@ logger.Log(err)
 
 ```
 
+The current implementation also recognises the following interfaces, as
+they can be easier to implement, and/or more memory efficient.
+
+```go
+type keyvalPairer interface {
+	KeyvalPair() (key string, value interface{})
+}
+```
+
+```go
+type keyvalMapper interface {
+	KeyvalMap() map[string]interface{}
+}
+```
+
+This makes it easy to define standard logging for types. For example:
+
+```go
+type User struct {
+	ID string
+	
+	// ... other fields ...
+}
+
+func (u *User) KeyvalPair() (string, interface{}) {
+	return "userID", u.ID
+}
+
+// ... later on ...
+
+func doSomethingWithUser(u *User) {
+	if !hasPermission(u) {
+		// msg="permission denied" userID=1234 
+		logger.Log("permission denied", u)
+	}
+}
+```
+
+> The `keyvalPairer` and `keyvalMapper` interfaces seem like a good idea,
+but have not been used all that much. If they do not prove all that useful
+they *might* be removed in favor of simplicity.
+
 ## Performance
 
 To date, the `kv` package has only been used in applications where peak 

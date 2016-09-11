@@ -14,6 +14,12 @@ func (p testKeyvalPairer) KeyvalPair() (string, interface{}) {
 	return p.key, p.value
 }
 
+type testKeyvalMapper map[string]interface{}
+
+func (m testKeyvalMapper) KeyvalMap() map[string]interface{} {
+	return map[string]interface{}(m)
+}
+
 func TestKeyvals(t *testing.T) {
 	tests := []struct {
 		keyvalser keyvalser
@@ -23,18 +29,28 @@ func TestKeyvals(t *testing.T) {
 			keyvalser: List{"k1", 1, "k2", 2},
 			want:      []interface{}{"k1", 1, "k2", 2},
 		},
-		{
-			keyvalser: Map{"k1": 1, "k2": 2},
-			want:      []interface{}{"k1", 1, "k2", 2},
-		},
-		{
-			keyvalser: Pair{"k1", 1},
-			want:      []interface{}{"k1", 1},
-		},
 	}
 
 	for i, tt := range tests {
 		if got := tt.keyvalser.Keyvals(); !reflect.DeepEqual(tt.want, got) {
+			t.Errorf("%d: want=%v, got=%v", i, tt.want, got)
+		}
+	}
+}
+
+func TestKeyvalMapper(t *testing.T) {
+	tests := []struct {
+		keyvalMapper keyvalMapper
+		want         map[string]interface{}
+	}{
+		{
+			keyvalMapper: testKeyvalMapper{"k1": 1, "k2": 2},
+			want:         map[string]interface{}{"k1": 1, "k2": 2},
+		},
+	}
+
+	for i, tt := range tests {
+		if got := tt.keyvalMapper.KeyvalMap(); !reflect.DeepEqual(tt.want, got) {
 			t.Errorf("%d: want=%v, got=%v", i, tt.want, got)
 		}
 	}
