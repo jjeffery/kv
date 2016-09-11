@@ -107,7 +107,8 @@ implement the keyvalser interface:
  logger.Log(err)
 
 The current implementation also recognises the following interfaces, as
-they can be easier to implement, and/or more memory efficient.
+they may be easier to implement, and/or more memory efficient in some
+circumstances.
 
 
  type keyvalPairer interface {
@@ -134,7 +135,7 @@ This makes it easy to define standard logging for types. For example:
 
  func doSomethingWithUser(u *User) {
      if !hasPermission(u) {
-         // msg="permission denied" userID=1234
+         // msg="permission denied" userID=u1234
          logger.Log("permission denied", u)
      }
  }
