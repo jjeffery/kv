@@ -106,9 +106,9 @@ implement the keyvalser interface:
  // msg="cannot do something" cause="file not found" theThing="the thing"
  logger.Log(err)
 
-The current implementation also recognises the following interfaces, as
-they may be easier to implement, and/or more memory efficient in some
-circumstances.
+The following interfaces are also recognized, and are used in preference
+to the keyvalser interface, as they indicate a more memory efficient
+method for extracting one or more key/value pairs from an object.
 
 
  type keyvalPairer interface {
@@ -128,14 +128,14 @@ This makes it easy to define standard logging for types. For example:
  }
 
  func (u *User) KeyvalPair() (string, interface{}) {
-     return "userID", u.ID
+     return "User.ID", u.ID
  }
 
  // ... later on ...
 
  func doSomethingWithUser(u *User) {
      if !hasPermission(u) {
-         // msg="permission denied" userID=u1234
+         // msg="permission denied" User.ID=u1234
          logger.Log("permission denied", u)
      }
  }

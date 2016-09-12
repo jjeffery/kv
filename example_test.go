@@ -140,7 +140,7 @@ func ExampleFlatten() {
 	// A more complex, and probably unrealistic example of mixing styles.
 	log("message3",
 		kv.List{
-			"key1", 1,
+			"key.1", 1,
 			"key2", 2,
 		},
 		kv.Map{
@@ -157,6 +157,6 @@ func ExampleFlatten() {
 	// Output:
 	// msg="message 1" key1=1 key2=2
 	// msg="message 2" key1=one
-	// msg=message3 key1=1 key2=2 key3=3 key4=4 key5=5
+	// msg=message3 key.1=1 key2=2 key3=3 key4=4 key5=5
 	// msg="message 4" key1=1 _p1=2
 }

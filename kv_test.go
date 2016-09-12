@@ -29,6 +29,14 @@ func TestKeyvals(t *testing.T) {
 			keyvalser: List{"k1", 1, "k2", 2},
 			want:      []interface{}{"k1", 1, "k2", 2},
 		},
+		{
+			keyvalser: Map{"k1": 1},
+			want:      []interface{}{"k1", 1},
+		},
+		{
+			keyvalser: Pair{"k1", 1},
+			want:      []interface{}{"k1", 1},
+		},
 	}
 
 	for i, tt := range tests {
@@ -45,6 +53,10 @@ func TestKeyvalMapper(t *testing.T) {
 	}{
 		{
 			keyvalMapper: testKeyvalMapper{"k1": 1, "k2": 2},
+			want:         map[string]interface{}{"k1": 1, "k2": 2},
+		},
+		{
+			keyvalMapper: Map{"k1": 1, "k2": 2},
 			want:         map[string]interface{}{"k1": 1, "k2": 2},
 		},
 	}
@@ -64,6 +76,11 @@ func TestKeyvalPair(t *testing.T) {
 	}{
 		{
 			keyvalPairer: testKeyvalPairer{"k1", 1},
+			wantKey:      "k1",
+			wantValue:    1,
+		},
+		{
+			keyvalPairer: Pair{"k1", 1},
 			wantKey:      "k1",
 			wantValue:    1,
 		},
