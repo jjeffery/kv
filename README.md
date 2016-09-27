@@ -17,7 +17,7 @@ logger interface looks like this:
 
 ```go
 type Logger interface {
-    Log(keyvals ...interface{})
+    Log(keyvals ...interface{}) error
 }
 ```
 
@@ -70,8 +70,8 @@ type logFacade struct {
     logger log.Logger
 }
 
-func (f *logFacade) Log(keyvals ...interface{}) {
-    f.logger.Log(kv.Flatten(keyvals)...)
+func (f *logFacade) Log(keyvals ...interface{}) error {
+    return f.logger.Log(kv.Flatten(keyvals)...)
 }
 ```
 
