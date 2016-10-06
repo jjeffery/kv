@@ -117,12 +117,12 @@ type keyvalser interface {
 ```
 
 For example, errors generated using the 
-[github.com/jjeffery/errorv](https://github.com/jjeffery/errorv) package 
+[github.com/jjeffery/errors](https://github.com/jjeffery/errors) package 
 implement the `keyvalser` interface:
 
 ```go
 if err := doSomethingWith(theThing); err != nil {
-    return errorv.Wrap(err, "cannot do something", kv.P("theThing", theThing))
+    return errors.Wrap(err, "cannot do something").With(kv.P("theThing", theThing))
 }
 
 // ...later on when we log the error ...
