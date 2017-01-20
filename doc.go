@@ -8,7 +8,7 @@ pairs are passed as a variadic list of interface{} arguments.
 For example, the Go kit (http://gokit.io/) logger interface looks like this:
 
  type Logger interface {
-     Log(keyvals ...interface{})
+     Log(keyvals ...interface{}) error
  }
 
 While there is flexibility and power in this variadic API,
@@ -110,7 +110,6 @@ The following interfaces are also recognized, and are used in preference
 to the keyvalser interface, as they indicate a more memory efficient
 method for extracting one or more key/value pairs from an object.
 
-
  type keyvalPairer interface {
      KeyvalPair() (key string, value interface{})
  }
@@ -139,10 +138,6 @@ This makes it easy to define standard logging for types. For example:
          logger.Log("permission denied", u)
      }
  }
-
-The keyvalPairer and keyvalMapper interfaces seem like a good idea,
-but have not been used all that much. If they do not prove all that useful
-they *might* be removed in favor of simplicity.
 
 */
 package kv
