@@ -38,6 +38,11 @@ func TestWriteKeyValue(t *testing.T) {
 			want:  "17=25",
 		},
 		{
+			key:   complex(1, 4),
+			value: complex(float64(100.99), float64(1.19e23)),
+			want:  "(1+4i)=(100.99+1.19e+23i)",
+		},
+		{
 			key:   nil,
 			value: nil,
 			want:  "null=null",
