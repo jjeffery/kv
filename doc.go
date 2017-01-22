@@ -1,5 +1,5 @@
 /*
-Package kv makes it easy to work with lists of key/value pairs.
+Package kv provides support for working with collections of key/value pairs.
 
 Structured logging
 
