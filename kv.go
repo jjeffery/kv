@@ -1,5 +1,7 @@
 package kv
 
+import "bytes"
+
 // The keyvalser interface returns a slice of alternating keys
 // and values.
 type keyvalser interface {
@@ -39,6 +41,30 @@ func (l List) Keyvals() []interface{} {
 	return []interface{}(l)
 }
 
+// String returns a string representation of the key/value pairs in
+// logfmt format: "key1=value1 key2=value2  ...".
+func (l List) String() string {
+	var buf bytes.Buffer
+	l.writeToBuffer(&buf)
+	return buf.String()
+}
+
+// MarshalText implements the TextMarshaler interface.
+func (l List) MarshalText() (text []byte, err error) {
+	var buf bytes.Buffer
+	l.writeToBuffer(&buf)
+	return buf.Bytes(), nil
+}
+
+func (l List) writeToBuffer(buf *bytes.Buffer) {
+	fl := Flatten(l)
+	for i := 0; i < len(fl); i += 2 {
+		k := fl[i]
+		v := fl[i+1]
+		writeKeyValue(buf, k, v)
+	}
+}
+
 // Pair represents a single key/value pair.
 type Pair struct {
 	Key   string
@@ -68,6 +94,21 @@ func (p Pair) Keyvals() []interface{} {
 // the keyvalsPairer interface described in the package summary.
 func (p Pair) KeyvalPair() (key string, value interface{}) {
 	return p.Key, p.Value
+}
+
+// String returns a string representation of the key and value in
+// logfmt format: "key=value".
+func (p Pair) String() string {
+	var buf bytes.Buffer
+	writeKeyValue(&buf, p.Key, p.Value)
+	return buf.String()
+}
+
+// MarshalText implements the TextMarshaler interface.
+func (p Pair) MarshalText() (text []byte, err error) {
+	var buf bytes.Buffer
+	writeKeyValue(&buf, p.Key, p.Value)
+	return buf.Bytes(), nil
 }
 
 func (p Pair) appendKeyvals(keyvals []interface{}) []interface{} {
@@ -103,4 +144,25 @@ func (m Map) appendKeyvals(keyvals []interface{}) []interface{} {
 		keyvals = append(keyvals, key, value)
 	}
 	return keyvals
+}
+
+// String returns a string representation of the key/value pairs in
+// logfmt format: "key1=value1 key2=value2  ...".
+func (m Map) String() string {
+	var buf bytes.Buffer
+	m.writeToBuffer(&buf)
+	return buf.String()
+}
+
+// MarshalText implements the TextMarshaler interface.
+func (m Map) MarshalText() (text []byte, err error) {
+	var buf bytes.Buffer
+	m.writeToBuffer(&buf)
+	return buf.Bytes(), nil
+}
+
+func (m Map) writeToBuffer(buf *bytes.Buffer) {
+	for k, v := range m {
+		writeKeyValue(buf, k, v)
+	}
 }

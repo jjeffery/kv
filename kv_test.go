@@ -1,6 +1,8 @@
 package kv
 
 import (
+	"encoding"
+	"fmt"
 	"reflect"
 	"testing"
 )
@@ -90,6 +92,48 @@ func TestKeyvalPair(t *testing.T) {
 		gotKey, gotValue := tt.keyvalPairer.KeyvalPair()
 		if gotKey != tt.wantKey || !reflect.DeepEqual(tt.wantValue, gotValue) {
 			t.Errorf("%d: want=[%s, %v], got=[%s, %v]", i, tt.wantKey, tt.wantValue, gotKey, gotValue)
+		}
+	}
+}
+
+func TestString(t *testing.T) {
+	tests := []struct {
+		input interface{}
+		want  string
+	}{
+		{
+			input: Pair{"key", "value"},
+			want:  "key=value",
+		},
+		{
+			input: Map{"key": "value"},
+			want:  "key=value",
+		},
+		{
+			input: List{"key1", "value1", "key2", "value2"},
+			want:  "key1=value1 key2=value2",
+		},
+	}
+	for i, tt := range tests {
+		stringer, ok := tt.input.(fmt.Stringer)
+		if !ok {
+			t.Errorf("expected fmt.Stringer")
+		} else {
+			if got, want := stringer.String(), tt.want; got != want {
+				t.Errorf("%d: got=%s want=%s", i, got, want)
+			}
+		}
+		marshaler, ok := tt.input.(encoding.TextMarshaler)
+		if !ok {
+			t.Errorf("expected encoding.TextMarshaler")
+		} else {
+			b, err := marshaler.MarshalText()
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got, want := string(b), tt.want; got != want {
+				t.Errorf("%d: got=%s want=%s", i, got, want)
+			}
 		}
 	}
 }
