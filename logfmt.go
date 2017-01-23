@@ -11,9 +11,11 @@ import (
 
 // constant byte values
 var (
-	bytesNull  = []byte("null")
-	bytesPanic = []byte(`<PANIC>`)
-	bytesError = []byte(`<ERROR>`)
+	bytesNull   = []byte("null")
+	bytesPanic  = []byte(`<PANIC>`)
+	bytesError  = []byte(`<ERROR>`)
+	bytesEmptyK = []byte(`<EMPTY>`)
+	bytesEmptyV = []byte(`""`)
 
 	escapeSequences = map[rune]string{
 		'\t': `\t`,
@@ -83,6 +85,10 @@ func writeBytesKey(buf *bytes.Buffer, b []byte) {
 		buf.Write(bytesNull)
 		return
 	}
+	if len(b) == 0 {
+		buf.Write(bytesEmptyK)
+		return
+	}
 	for {
 		index := bytes.IndexFunc(b, invalidKey)
 		if index < 0 {
@@ -100,6 +106,10 @@ func writeBytesKey(buf *bytes.Buffer, b []byte) {
 }
 
 func writeStringKey(buf *bytes.Buffer, s string) {
+	if s == "" {
+		buf.Write(bytesEmptyK)
+		return
+	}
 	index := strings.IndexFunc(s, invalidKey)
 	if index < 0 {
 		buf.WriteString(s)
@@ -173,6 +183,10 @@ func writeBytesValue(buf *bytes.Buffer, b []byte) {
 		buf.Write(bytesNull)
 		return
 	}
+	if len(b) == 0 {
+		buf.Write(bytesEmptyV)
+		return
+	}
 	index := bytes.IndexFunc(b, needsQuote)
 	if index < 0 {
 		buf.Write(b)
@@ -201,6 +215,10 @@ func writeBytesValue(buf *bytes.Buffer, b []byte) {
 }
 
 func writeStringValue(buf *bytes.Buffer, s string) {
+	if s == "" {
+		buf.Write(bytesEmptyV)
+		return
+	}
 	index := strings.IndexFunc(s, needsQuote)
 	if index < 0 {
 		buf.WriteString(s)

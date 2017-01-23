@@ -38,6 +38,11 @@ func TestWriteKeyValue(t *testing.T) {
 			want:  "17=25",
 		},
 		{
+			key:   "",
+			value: "",
+			want:  `<EMPTY>=""`,
+		},
+		{
 			key:   nil,
 			value: nil,
 			want:  "null=null",
@@ -116,7 +121,7 @@ func TestWriteKeyValue(t *testing.T) {
 			var buf bytes.Buffer
 			writeKeyValue(&buf, key, value)
 			if got := buf.String(); got != want {
-				t.Errorf("%d: got=%s want=%s", i, got, want)
+				t.Errorf("%d: got `%s` want `%s`", i, got, want)
 			}
 		}
 		doTest(tt.key, tt.value, tt.want)
