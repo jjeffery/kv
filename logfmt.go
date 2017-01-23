@@ -83,17 +83,8 @@ func writeBytesKey(buf *bytes.Buffer, b []byte) {
 		buf.Write(bytesNull)
 		return
 	}
-	index := bytes.IndexFunc(b, invalidKey)
-	if index < 0 {
-		buf.Write(b)
-		return
-	}
-	if index > 0 {
-		buf.Write(b[0:index])
-		b = b[index:]
-	}
 	for {
-		index = bytes.IndexFunc(b, invalidKey)
+		index := bytes.IndexFunc(b, invalidKey)
 		if index < 0 {
 			break
 		}
