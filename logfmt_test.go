@@ -117,6 +117,11 @@ func TestWriteKeyValue(t *testing.T) {
 			value: struct{ v int }{v: 17},
 			want:  "{25}={17}",
 		},
+		{
+			key:   "key",
+			value: "value:",
+			want:  `key="value:"`,
+		},
 	}
 	for i, tt := range tests {
 		doTest := func(key interface{}, value interface{}, want string) {

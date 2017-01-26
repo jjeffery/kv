@@ -257,8 +257,12 @@ func writeTextMarshalerValue(buf *bytes.Buffer, t encoding.TextMarshaler) {
 
 func needsQuote(c rune) bool {
 	// The single quote '\'' and equals '=' are not strictly necessary, but
-	// the output is more human readable if they are quoted.
-	return c <= ' ' || c == '"' || c == '\\' || c == '\'' || c == '='
+	// the output is more human readable if they are quoted. The colon ':'
+	// is quoted so that messages separated by colons are more clear.
+	//     cannot open directory dirname="c": file not found
+	// is different to
+	//     cannot open directory dirname="c:" file not found
+	return c <= ' ' || c == '"' || c == '\\' || c == '\'' || c == '=' || c == ':'
 }
 
 func needsBackslash(c rune) bool {
