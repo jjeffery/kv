@@ -2,13 +2,14 @@
 
 Package kv makes it easy to work with lists of key/value pairs.
 
-- [Structured logging](#structured-logging)
+- [Structured logging APIs](#structured-logging-apis)
+- [Key value pairs with standard library logging](#key-value-pairs-with-standard-library-logging)
 - [Flattening](#flattening)
 - [Fixing](#fixing)
 - [Extending](#extending)
 - [Performance](#performance)
 
-## Structured logging
+## Structured logging APIs
 
 Many structured logging APIs make use of a "keyvals" API, where key/value
 pairs are passed as a variadic list of interface{} arguments.
@@ -51,6 +52,42 @@ logger.Log(kv.P("method", "GetAddress"),
 
 The kv alternatives are more verbose, but in many situations the additional
 clarity and type safety is worth the effort.
+
+## Key value pairs with standard library logging
+
+The `kv` package types `Pair`, `List` and `Map` all implement the `fmt.Stringer` interface and can render their values as text. For example if you like the simplicity of logging with key value pairs but are not ready to move to a structured logging package you can use the standard library logging. This approach works well with packages like [comail.io/go/colog](https://github.com/comail/colog):
+
+```go
+import "log"
+
+func doSomething(s, t string) {
+    // log a single key/value pair
+    doOneThingWith(s)
+    log.Println("did one thing", kv.P("s", s))
+    
+    // log multiple key/value pairs with a list
+    u := getSometing(s)
+    log.Println("got something", kv.List{
+        "s", s,
+        "u", u,
+    })
+     
+    // log multiple key/value pairs with a map
+    doAnotherThingWith(s, t, u)
+    log.PrintLn("did another thing", kv.Map{
+        "s": s,
+        "t": t,
+        "u", u,
+    })
+}
+```
+
+```
+Output:
+did one thing s="value for s"
+got something s="value for s" u="value for u"
+did another thing u="value for u" s="value for s" t="value for t"
+```
 
 ## Flattening
 
