@@ -62,7 +62,7 @@ The List, Map and Pair types all implement the following interface:
      Keyvals() []interface{}
  }
 
-The Flatten function recognises types that implement this interface and treat
+The Flatten function recognises types that implement this interface and treats
 them as a slice of key/value pairs when flattening a slice.
 */
 package kv

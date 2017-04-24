@@ -12,13 +12,9 @@ type keyvalser interface {
 }
 
 // The keyvalPairer interface returns a single key/value pair.
+// Internal interface used to reduce memory allocations.
 type keyvalPairer interface {
-	KeyvalPair() (key string, value interface{})
-}
-
-// The keyvalMapper interface returns a map of keys to values.
-type keyvalMapper interface {
-	KeyvalMap() map[string]interface{}
+	keyvalPair() (key string, value interface{})
 }
 
 // The keyvalsAppender interface is used for appending key/value pairs.
@@ -93,9 +89,9 @@ func (p Pair) Keyvals() []interface{} {
 	return []interface{}{p.Key, p.Value}
 }
 
-// KeyvalPair returns the pair's key and value. This implements
-// the keyvalsPairer interface described in the package summary.
-func (p Pair) KeyvalPair() (key string, value interface{}) {
+// keyvalPair returns the pair's key and value. This implements
+// the keyvalsPairer interface.
+func (p Pair) keyvalPair() (key string, value interface{}) {
 	return p.Key, p.Value
 }
 
@@ -136,12 +132,6 @@ func (m Map) Keyvals() []interface{} {
 	}
 	kvSorter(keyvals).Sort()
 	return keyvals
-}
-
-// KeyvalMap returns the map cast as a map[string]interface{}.
-// It implements the keyvalMapper interface described in the package summary.
-func (m Map) KeyvalMap() map[string]interface{} {
-	return map[string]interface{}(m)
 }
 
 func (m Map) appendKeyvals(keyvals []interface{}) []interface{} {

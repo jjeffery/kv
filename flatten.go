@@ -57,11 +57,6 @@ func Flatten(keyvals []interface{}) []interface{} {
 			// so just use a constant. More than 8 key/value pairs is
 			// uncommon.
 			estimatedLen += 16
-		case keyvalMapper:
-			// unknown implementation: calling KeyvalMap could result in
-			// additional memory allocation, so use a conservative guess
-			requiresFlattening = true
-			estimatedLen += 16
 		case keyvalser:
 			// unknown implementation: calling Keyvals could result in
 			// additional memory allocation, so use a conservative guess
@@ -190,11 +185,7 @@ func flatten(
 			output = v.appendKeyvals(output)
 		case keyvalPairer:
 			{
-				key, value := v.KeyvalPair()
-				output = append(output, key, value)
-			}
-		case keyvalMapper:
-			for key, value := range v.KeyvalMap() {
+				key, value := v.keyvalPair()
 				output = append(output, key, value)
 			}
 		case keyvalser:
@@ -219,7 +210,7 @@ func flatten(
 func countScalars(input []interface{}) int {
 	for i := 0; i < len(input); i++ {
 		switch input[i].(type) {
-		case keyvalsAppender, keyvalser, keyvalPairer, keyvalMapper:
+		case keyvalsAppender, keyvalser, keyvalPairer:
 			return i
 		}
 	}

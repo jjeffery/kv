@@ -93,7 +93,7 @@ func TestFlatten(t *testing.T) {
 		{
 			v: []interface{}{
 				"message text",
-				testKeyvalMapper{"k1": 1, "k2": "2"},
+				Map{"k1": 1, "k2": "2"},
 				testKeyvalPairer{"k3", 3},
 			},
 			want: []interface{}{
