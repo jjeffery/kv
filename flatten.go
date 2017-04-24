@@ -9,11 +9,9 @@ import (
 // of alternating key/value pairs. See the examples.
 //
 // Flatten will also check the result to ensure it is a valid
-// slice of key/value pairs according to the following rules.
-//  * Must have an even number of items in the slice
-//  * Items at even indexes must be strings
-// Flatten will insert keys into the array to ensure that the returned
-// slice conforms.
+// slice of key/value pairs. The returned slice is guaranteed
+// to have an even number of items, and every item at an even-numbered
+// index is guaranteed to be a string.
 func Flatten(keyvals []interface{}) []interface{} {
 	// opinionated constants for names of keys
 	const (

@@ -1,81 +1,50 @@
 /*
 Package kv provides support for working with collections of key/value pairs.
+The package provides types for a pair, list and map of key/value pairs.
 
-Structured logging
+Rendering as text
 
-Many structured logging APIs make use of a "keyvals" API, where key/value
-pairs are passed as a variadic list of interface{} arguments.
-For example, the Go kit (http://gokit.io/) logger interface looks like this:
+The types Pair, List and Map all implement the fmt.String interface and the
+encoding.TextMarshaler interface, and so they can render themselves as text.
+For example if you like the simplicity of logging with key value pairs but
+are not ready to move away from the standard library log package you can
+use this package to render your key value pairs.
+  log.Println("this is a log message", kv.List{
+      "key1", "value 1",
+      "key2", 2,
+  })
 
- type Logger interface {
-     Log(keyvals ...interface{}) error
- }
+  // Output (not including prefixes added by the log package):
+  // this is a log message key1="value 1" key2=2
 
-While there is flexibility and power in this variadic API,
-one downside is the loss of any strict type checking. The following
-example (taken from Go kit) is a fairly typical example.
-It is not obvious at a glance whether any arguments have been accidentally
-omitted.
+This works well with the colog package (https://godoc.org/comail.io/go/colog).
 
- logger.Log("method", "GetAddress", "profileID", profileID, "addressID", addressID, "took", time.Since(begin), "err", err)
+Flattening and Fixing
 
-Package kv goes some way towards restoring type safety and improving clarity:
+The kv.Flatten function accepts a slice of interface{} and "flattens" it to
+return a slice with an even-numbered length where the value at every even-numbered
+index is a keyword string. It can flatten arrays:
 
- // previous example can be written as
- logger.Log(kv.Map{
-     "method":    "GetAddress",
-     "profileID": profileID,
-     "addressID": addressID,
-     "took":      time.Since(begin),
-     "err":       err,
- })
+ // ["k1", 1, "k2", 2, "k3", 3, "k4", 4]
+ keyvals := kv.Flatten({"k1", 1, []interface{}{"k2", 2, "k3", 3}, "k4", 4})
 
- // or alternatively
- logger.Log(kv.P("method", "GetAddress"),
-     kv.P("profileID", profileID),
-     kv.P("addressID", addressID),
-     kv.P("took", time.Since(begin)),
-     kv.P("err", err))
-
-The kv alternatives are more verbose, but in many situations the additional
-clarity and type safety is worth the effort.
-
-Flattening
-
-The key to using the kv API is to use the kv.Flatten function to flatten
-the keyvals before logging.
-
- // Flatten converts the contents of v into a slice
- // of alternating key/value pairs.
- func Flatten(v ...interface{}) []interface{}
-
-A logging facade for the Go kit log.Logger interface looks like this:
-
- type logFacade struct {
-     logger log.Logger
- }
-
- func (f *logFacade) Log(keyvals ...interface{}) {
-     f.logger.Log(kv.Flatten(keyvals)...)
- }
-
-Fixing
-
-The kv.Flatten function is reasonably good at working out what to do when
-the input is not strictly conformant. It will infer a message value without
+Flatten is reasonably good at working out what to do when
+the input is not a conforming. It will infer a message value without
 a key and give it a "msg" key.
 
-
- // ["msg", "message 1", "key1", 1, "key", 2]
- keyvals = kv.Flatten("message 1", kv.Map{
+ // ["msg", "message 1", "key1", 1, "key2", 2]
+ keyvals := kv.Flatten("message 1", kv.Map{
      "key1": 1,
      "key2": 2,
- })
+ }))
+
+ // Output:
+ // msg="message 1" key1=1 key2=2
 
 If a value is present without a key it will assign it an arbitrary one.
 
  // ["msg", "message 2", "key3", 3, "_p1", 4]
- keyvals = kv.Flatten("msg", "message 3", "key3", 3, 4)
+ keyvals := kv.Flatten("msg", "message 3", "key3", 3, 4)
 
 A single error gets turned into a message (but see "Extending" below).
 
@@ -85,59 +54,15 @@ A single error gets turned into a message (but see "Extending" below).
 See the Flatten tests for more examples of how kv.Flatten will attempt to
 fix non-conforming keyvals lists.
 
-Extending
+The keyvalser interface
 
-If an item implements the following interface, it will be treated as if it
-is a list of key/value pairs.
+The List, Map and Pair types all implement the following interface:
 
  type keyvalser interface {
      Keyvals() []interface{}
  }
 
-For example, errors generated using the "github.com/jjeffery/errors" package
-implement the keyvalser interface:
-
- if err := doSomethingWith(theThing); err != nil {
-     return errors.Wrap(err, "cannot do something").With(kv.P("theThing", theThing))
- }
-
- // ...later on when we log the error ...
-
- // msg="cannot do something" cause="file not found" theThing="the thing"
- logger.Log(err)
-
-The following interfaces are also recognized, and are used in preference
-to the keyvalser interface, as they indicate a more memory efficient
-method for extracting one or more key/value pairs from an object.
-
- type keyvalPairer interface {
-     KeyvalPair() (key string, value interface{})
- }
-
- type keyvalMapper interface {
-     KeyvalMap() map[string]interface{}
- }
-
-This makes it easy to define standard logging for types. For example:
-
- type User struct {
-     ID string
-
-     // ... other fields ...
- }
-
- func (u *User) KeyvalPair() (string, interface{}) {
-     return "User.ID", u.ID
- }
-
- // ... later on ...
-
- func doSomethingWithUser(u *User) {
-     if !hasPermission(u) {
-         // msg="permission denied" User.ID=u1234
-         logger.Log("permission denied", u)
-     }
- }
-
+The Flatten function recognises types that implement this interface and treat
+them as a slice of key/value pairs when flattening a slice.
 */
 package kv

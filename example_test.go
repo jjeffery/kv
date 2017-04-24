@@ -2,28 +2,10 @@ package kv_test
 
 import (
 	"fmt"
-)
+	log "fmt" // sleight of hand so example looks like its using the standard log package
 
-import (
-	"github.com/go-logfmt/logfmt"
 	"github.com/jjeffery/kv"
 )
-
-type Logger interface {
-	Log(v ...interface{})
-}
-
-func doLog(v ...interface{}) {
-	data, _ := logfmt.MarshalKeyvals(kv.Flatten(v)...)
-	fmt.Println(string(data))
-}
-
-var errNotFound error
-var logger = struct {
-	Log func(v ...interface{})
-}{
-	Log: doLog,
-}
 
 var id = 42
 
@@ -32,19 +14,34 @@ type Record struct {
 }
 
 func LookupSomething(id int) (*Record, bool) {
-	return nil, false
+	return &Record{
+		sku:         "X1FWP",
+		location:    "bin 31",
+		color:       "green",
+		pickingCode: "p1p",
+	}, true
 }
 
 func Example() {
-	// logger.Log(v ...interface{})
-
+	log.Println("trace: lookup up something", kv.P("id", id))
 	record, ok := LookupSomething(id)
 	if !ok {
-		logger.Log("not found", kv.P("id", id))
+		log.Println("error: not found", kv.P("id", id))
 		return
 	}
 
-	logger.Log("found article", kv.Map{
+	// log a message with lots of key/value pairs
+	log.Println("found article", kv.List{
+		"sku", record.sku,
+		"location", record.location,
+		"color", record.color,
+		"pickingCode", record.pickingCode,
+	})
+
+	// Log again, this time with a map. The main difference
+	// is that with a map the keys are sorted. With a list the
+	// keys are in the order given.
+	log.Println("found article", kv.Map{
 		"sku":         record.sku,
 		"location":    record.location,
 		"color":       record.color,
@@ -52,19 +49,21 @@ func Example() {
 	})
 
 	// Output:
-	// msg="not found" id=42
+	// trace: lookup up something id=42
+	// found article sku=X1FWP location="bin 31" color=green pickingCode=p1p
+	// found article color=green location="bin 31" pickingCode=p1p sku=X1FWP
 }
 
 func ExampleList() {
-	var result string
-	var count int
+	result, count := "the result", 1
 
-	result, count = getResultAndCount()
-
-	logger.Log(kv.List{
+	fmt.Println("results are in:", kv.List{
 		"result", result,
 		"count", count,
 	})
+
+	// Output:
+	// results are in: result="the result" count=1
 }
 
 func getResultAndCount() (string, int) {
@@ -72,67 +71,68 @@ func getResultAndCount() (string, int) {
 }
 
 func ExamplePair() {
-	var result string
-	var count int
-
-	result, count = getResultAndCount()
+	result, count := "the result", 1
 
 	// go vet warns: "composite literal uses unkeyed fields"
-	logger.Log(
+	fmt.Println(
 		kv.Pair{"result", result},
-		kv.Pair{"count", count})
+		kv.Pair{"count", count},
+	)
 
 	// this alternative requires slightly less typing
 	// and avoids the go vet warning
-	logger.Log(
+	fmt.Println(
 		kv.P("result", result),
-		kv.P("count", count))
+		kv.P("count", count),
+	)
+
+	// Output:
+	// result="the result" count=1
+	// result="the result" count=1
 }
 
 func ExampleP() {
-	var result string
-	var count int
+	result, count := "the result", 1
 
-	result, count = getResultAndCount()
-
-	logger.Log(
+	fmt.Println(
 		kv.P("result", result),
-		kv.P("count", count))
+		kv.P("count", count),
+	)
+
+	// Output:
+	// result="the result" count=1
 }
 
 func ExampleMap() {
-	var result string
-	var count int
+	result, count := "the result", 1
 
-	result, count = getResultAndCount()
-
-	logger.Log(kv.Map{
+	fmt.Println(kv.Map{
 		"result": result,
 		"count":  count,
 	})
 
 	// Output:
-	// count=1 result="result here"
+	// count=1 result="the result"
 }
 
 func ExampleFlatten() {
-	// Example of a log facade that prints to stdout in
-	// logfmt format (uses package github.com/go-logfmt/logfmt).
+	// log function prints to stdout.
 	log := func(v ...interface{}) {
-		keyvals := kv.Flatten(v)
-		data, _ := logfmt.MarshalKeyvals(keyvals...)
-		fmt.Println(string(data))
+		list := kv.List(kv.Flatten(v))
+		fmt.Println(list)
 	}
+
+	// Typical usage: structured logging
+	log("msg", "message 1", "key1", 1, "key2", 2)
 
 	// Message can be split into individual key/value pairs.
 	log(kv.P("msg", "message 1"), kv.P("key1", 1), kv.P("key2", 2))
 
 	// Assumes the first string without a keyword is the message ("msg").
 	// Use a map for key/value pairs where the order is not important.
-	// Only including one entry in the map so that the output is predictable
-	// for testing.
 	log("message 2", kv.Map{
 		"key1": "one",
+		"key2": "two",
 	})
 
 	// A more complex, and probably unrealistic example of mixing styles.
@@ -142,7 +142,8 @@ func ExampleFlatten() {
 			"key2", 2,
 		},
 		kv.Map{
-			"key3": 3,
+			"key3.1": 3.1,
+			"key3.2": 3.2,
 		},
 		"key4", 4,
 		kv.P("key5", 5),
@@ -154,7 +155,8 @@ func ExampleFlatten() {
 
 	// Output:
 	// msg="message 1" key1=1 key2=2
-	// msg="message 2" key1=one
-	// msg=message3 key.1=1 key2=2 key3=3 key4=4 key5=5
+	// msg="message 1" key1=1 key2=2
+	// msg="message 2" key1=one key2=two
+	// msg=message3 key.1=1 key2=2 key3.1=3.1 key3.2=3.2 key4=4 key5=5
 	// msg="message 4" key1=1 _p1=2
 }
