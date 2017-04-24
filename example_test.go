@@ -68,7 +68,7 @@ func ExampleList() {
 }
 
 func getResultAndCount() (string, int) {
-	return "", 0
+	return "result here", 1
 }
 
 func ExamplePair() {
@@ -111,10 +111,8 @@ func ExampleMap() {
 		"count":  count,
 	})
 
-	// The output will be either
-	//   result="result here" count=1
-	// or
-	//   count=1 result="result here"
+	// Output:
+	// count=1 result="result here"
 }
 
 func ExampleFlatten() {

@@ -36,6 +36,10 @@ func TestKeyvals(t *testing.T) {
 			want:      []interface{}{"k1", 1},
 		},
 		{
+			keyvalser: Map{"k1": 1, "k2": 2, "k3": 3, "a1": "1", "a3": "3", "a2": "2"},
+			want:      []interface{}{"a1", "1", "a2", "2", "a3", "3", "k1", 1, "k2", 2, "k3", 3},
+		},
+		{
 			keyvalser: Pair{"k1", 1},
 			want:      []interface{}{"k1", 1},
 		},

@@ -1,6 +1,9 @@
 package kv
 
-import "bytes"
+import (
+	"bytes"
+	"sort"
+)
 
 // The keyvalser interface returns a slice of alternating keys
 // and values.
@@ -125,11 +128,13 @@ type Map map[string]interface{}
 // Keyvals returns the contents of the map as a list of alternating
 // key/value pairs. It implements the keyvalser interface described
 // in the package summary.
+// The key/value pairs are sorted by key.
 func (m Map) Keyvals() []interface{} {
 	keyvals := make([]interface{}, 0, len(m)*2)
 	for k, v := range m {
 		keyvals = append(keyvals, k, v)
 	}
+	kvSorter(keyvals).Sort()
 	return keyvals
 }
 
@@ -140,14 +145,20 @@ func (m Map) KeyvalMap() map[string]interface{} {
 }
 
 func (m Map) appendKeyvals(keyvals []interface{}) []interface{} {
-	for key, value := range m {
-		keyvals = append(keyvals, key, value)
+	keys := make([]string, 0, len(m))
+	for key := range m {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	for _, key := range keys {
+		keyvals = append(keyvals, key, m[key])
 	}
 	return keyvals
 }
 
 // String returns a string representation of the key/value pairs in
 // logfmt format: "key1=value1 key2=value2  ...".
+// The key value pairs are printed sorted by the key.
 func (m Map) String() string {
 	var buf bytes.Buffer
 	m.writeToBuffer(&buf)
@@ -155,6 +166,7 @@ func (m Map) String() string {
 }
 
 // MarshalText implements the TextMarshaler interface.
+// The key value pairs are marshaled sorted by the key.
 func (m Map) MarshalText() (text []byte, err error) {
 	var buf bytes.Buffer
 	m.writeToBuffer(&buf)
@@ -162,7 +174,35 @@ func (m Map) MarshalText() (text []byte, err error) {
 }
 
 func (m Map) writeToBuffer(buf *bytes.Buffer) {
-	for k, v := range m {
-		writeKeyValue(buf, k, v)
+	keys := make([]string, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
 	}
+	sort.Strings(keys)
+	for _, k := range keys {
+		writeKeyValue(buf, k, m[k])
+	}
+}
+
+// kvSorter implements sort.Interface. It assumes that every
+// element at an even-numbered index is a string and will panic
+// if this is not the case.
+type kvSorter []interface{}
+
+func (kvs kvSorter) Len() int {
+	return len(kvs) / 2
+}
+
+func (kvs kvSorter) Less(i, j int) bool {
+	key1 := kvs[i*2].(string)
+	key2 := kvs[j*2].(string)
+	return key1 < key2
+}
+
+func (kvs kvSorter) Swap(i, j int) {
+	kvs[i*2], kvs[i*2+1], kvs[j*2], kvs[j*2+1] = kvs[j*2], kvs[j*2+1], kvs[i*2], kvs[i*2+1]
+}
+
+func (kvs kvSorter) Sort() {
+	sort.Sort(kvs)
 }
