@@ -29,7 +29,8 @@ index is a keyword string. It can flatten arrays:
  keyvals := kv.Flatten({"k1", 1, []interface{}{"k2", 2, "k3", 3}, "k4", 4})
 
 Flatten is reasonably good at working out what to do when
-the input is not a conforming. It will infer a message value without
+the input length is not an even number, or when one of the items at an even-numbered
+index is not a string value. For example, it will infer a message value without
 a key and give it a "msg" key.
 
  // ["msg", "message 1", "key1", 1, "key2", 2]
@@ -38,21 +39,18 @@ a key and give it a "msg" key.
      "key2": 2,
  }))
 
- // Output:
- // msg="message 1" key1=1 key2=2
-
 If a value is present without a key it will assign it an arbitrary one.
 
  // ["msg", "message 2", "key3", 3, "_p1", 4]
  keyvals := kv.Flatten("msg", "message 3", "key3", 3, 4)
 
-A single error gets turned into a message (but see "Extending" below).
+A single error gets turned into a message.
 
  // ["msg", "the error message"]
  keyvals = kv.Flatten(err)
 
 See the Flatten tests for more examples of how kv.Flatten will attempt to
-fix non-conforming keyvals lists.
+fix non-conforming key/value lists. (https://godoc.org/src/github.com/jjeffery/kv/flatten_test.go)
 
 The keyvalser interface
 
