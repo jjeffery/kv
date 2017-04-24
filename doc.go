@@ -50,7 +50,7 @@ A single error gets turned into a message.
  keyvals = kv.Flatten(err)
 
 See the Flatten tests for more examples of how kv.Flatten will attempt to
-fix non-conforming key/value lists. (https://godoc.org/src/github.com/jjeffery/kv/flatten_test.go)
+fix non-conforming key/value lists. (https://github.com/jjeffery/kv/blob/master/flatten_test.go)
 
 The keyvalser interface
 
