@@ -115,7 +115,7 @@ func TestWriteKeyValue(t *testing.T) {
 		{
 			key:   struct{ v int }{v: 25},
 			value: struct{ v int }{v: 17},
-			want:  "{25}={17}",
+			want:  `{25}="{17}"`,
 		},
 		{
 			key:   "key",

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"reflect"
 	"strings"
+	"unicode"
 	"unicode/utf8"
 )
 
@@ -256,13 +257,10 @@ func writeTextMarshalerValue(buf *bytes.Buffer, t encoding.TextMarshaler) {
 }
 
 func needsQuote(c rune) bool {
-	// The single quote '\'' and equals '=' are not strictly necessary, but
-	// the output is more human readable if they are quoted. The colon ':'
-	// is quoted so that messages separated by colons are more clear.
-	//     cannot open directory dirname="c": file not found
-	// is different to
-	//     cannot open directory dirname="c:" file not found
-	return c <= ' ' || c == '"' || c == '\\' || c == '\'' || c == '=' || c == ':'
+	// This test will result in more values being quoted than is strictly
+	// necesary for logfmt, but quoting all non-letter and non-digits makes
+	// this compatible with the default colog extractor.
+	return !unicode.IsLetter(c) && !unicode.IsDigit(c) && c != '_'
 }
 
 func needsBackslash(c rune) bool {
