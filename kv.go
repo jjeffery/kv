@@ -40,6 +40,11 @@ func (l List) Keyvals() []interface{} {
 	return []interface{}(l)
 }
 
+// With returns a list with keyvals as contents.
+func With(keyvals ...interface{}) List {
+	return List(keyvals)
+}
+
 // String returns a string representation of the key/value pairs in
 // logfmt format: "key1=value1 key2=value2  ...".
 func (l List) String() string {
@@ -116,9 +121,7 @@ func (p Pair) appendKeyvals(keyvals []interface{}) []interface{} {
 
 // Map is a map of keys to values.
 //
-// Note that when a map is appended to a keyvals list of alternating
-// keys and values, there is no guarantee of the order that the key/value
-// pairs will be appended.
+// Key value pairs are serialized in key order.
 type Map map[string]interface{}
 
 // Keyvals returns the contents of the map as a list of alternating

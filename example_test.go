@@ -70,6 +70,18 @@ func getResultAndCount() (string, int) {
 	return "result here", 1
 }
 
+func ExampleWith() {
+	result, count := "the result", 1
+
+	fmt.Println("results are in:", kv.With(
+		"result", result,
+		"count", count,
+	))
+
+	// Output:
+	// results are in: result="the result" count=1
+}
+
 func ExamplePair() {
 	result, count := "the result", 1
 
