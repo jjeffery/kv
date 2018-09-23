@@ -83,6 +83,12 @@ func (msg Message) MarshalText() (text []byte, err error) {
 	return buf.Bytes(), nil
 }
 
+// UnmarshalText implements the TextUnmarshaler interface.
+func (msg *Message) UnmarshalText(text []byte) error {
+	*msg = Parse(text)
+	return nil
+}
+
 func (msg *Message) writeToBuffer(buf *bytes.Buffer) {
 	if msg == nil {
 		return
