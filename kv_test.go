@@ -1,6 +1,7 @@
 package kv
 
 import (
+	"context"
 	"encoding"
 	"fmt"
 	"reflect"
@@ -89,6 +90,14 @@ func TestString(t *testing.T) {
 			input: List{"key1", "value1", "key2", "value2"},
 			want:  "key1=value1 key2=value2",
 		},
+		{
+			input: Parse([]byte("this is a message key1=value1 key2=value2")),
+			want:  "this is a message key1=value1 key2=value2",
+		},
+		{
+			input: Parse([]byte("message 1 key1=value1 message 2   key2=value2 message 3   key3=value3")),
+			want:  "message 1 key1=value1 message 2 key2=value2 message 3 key3=value3",
+		},
 	}
 	for i, tt := range tests {
 		stringer, ok := tt.input.(fmt.Stringer)
@@ -112,4 +121,181 @@ func TestString(t *testing.T) {
 			}
 		}
 	}
+}
+
+func TestParseMessage(t *testing.T) {
+	tests := []struct {
+		input string
+		msg   Message
+	}{
+		{
+			input: `this is the message key1=1 key2="2"`,
+			msg: Message{
+				Text: "this is the message",
+				List: List{
+					"key1", "1",
+					"key2", "2",
+				},
+			},
+		},
+		{
+			input: `this is the message "key1"="1" "key2"="2"`,
+			msg: Message{
+				Text: "this is the message",
+				List: List{
+					"key1", "1",
+					"key2", "2",
+				},
+			},
+		},
+		{
+			input: `this is the message key1=`,
+			msg: Message{
+				Text: "this is the message",
+				List: List{
+					"key1", "",
+				},
+			},
+		},
+		{
+			input: `message key1==`,
+			msg: Message{
+				Text: "message",
+				List: List{
+					"key1", "=",
+				},
+			},
+		},
+		{
+			input: `message key1== key2= key3=x`,
+			msg: Message{
+				Text: "message",
+				List: List{
+					"key1", "=",
+					"key2", "",
+					"key3", "x",
+				},
+			},
+		},
+		{ // trailing whitspace, multiple white space
+			input: `message    key1=1    key2=2   `,
+			msg: Message{
+				Text: "message",
+				List: List{
+					"key1", "1",
+					"key2", "2",
+				},
+			},
+		},
+		{ // missing quote
+			input: `message key1="1`,
+			msg: Message{
+				Text: "message",
+				List: List{
+					"key1", "1",
+				},
+			},
+		},
+		{ // escapes
+			input: `message key1="a\r\n" key2="\x41"`,
+			msg: Message{
+				Text: "message",
+				List: List{
+					"key1", "a\r\n",
+					"key2", "A",
+				},
+			},
+		},
+		{ // nested message
+			input: `message 1 key1=1 message 2 key2=2`,
+			msg: Message{
+				Text: "message 1",
+				List: List{
+					"key1", "1",
+				},
+				Next: &Message{
+					Text: "message 2",
+					List: List{
+						"key2", "2",
+					},
+				},
+			},
+		},
+		{ // nested message with colon
+			input: `message 1 key1="1": message 2 key2=2`,
+			msg: Message{
+				Text: "message 1",
+				List: List{
+					"key1", "1",
+				},
+				Next: &Message{
+					Text: "message 2",
+					List: List{
+						"key2", "2",
+					},
+				},
+			},
+		},
+		{ // nested message with colon
+			input: `message 1 key1=1: message 2 key2=2`,
+			msg: Message{
+				Text: "message 1",
+				List: List{
+					"key1", "1",
+				},
+				Next: &Message{
+					Text: "message 2",
+					List: List{
+						"key2", "2",
+					},
+				},
+			},
+		},
+		{ // empty input
+			input: ``,
+			msg:   Message{},
+		},
+	}
+
+	for tn, tt := range tests {
+		if got, want := Parse([]byte(tt.input)), tt.msg; !msgEqual(&got, &want) {
+			t.Errorf("%d, got=%v, want=%v", tn, got, want)
+		}
+	}
+}
+
+func TestEdgeCases(t *testing.T) {
+	if got, want := Ctx(nil).With(), (Message{}); !msgEqual(&got, &want) {
+		t.Errorf("got=%v, want=%v", got, want)
+	}
+
+	if got, want := NewContext(nil).With(), context.Background(); got != want {
+		t.Errorf("got=%v, want=%v", got, want)
+	}
+}
+
+func msgEqual(m1, m2 *Message) bool {
+	if m1 == nil && m2 == nil {
+		return true
+	}
+	if m1 == nil || m2 == nil {
+		return false
+	}
+	if m1.Text != m2.Text {
+		return false
+	}
+	if len(m1.List) > 0 || len(m2.List) > 0 {
+		if !reflect.DeepEqual(m1.List, m2.List) {
+			return false
+		}
+	}
+	if len(m1.ContextList) > 0 || len(m2.ContextList) > 0 {
+		if !reflect.DeepEqual(m1.ContextList, m2.ContextList) {
+			return false
+		}
+	}
+	if !msgEqual(m1.Next, m2.Next) {
+		return false
+	}
+	return true
 }

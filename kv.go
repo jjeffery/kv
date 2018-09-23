@@ -40,11 +40,6 @@ func (l List) Keyvals() []interface{} {
 	return []interface{}(l)
 }
 
-// With returns a list with keyvals as contents.
-func With(keyvals ...interface{}) List {
-	return List(keyvals)
-}
-
 // String returns a string representation of the key/value pairs in
 // logfmt format: "key1=value1 key2=value2  ...".
 func (l List) String() string {
@@ -67,6 +62,16 @@ func (l List) writeToBuffer(buf *bytes.Buffer) {
 		v := fl[i+1]
 		writeKeyValue(buf, k, v)
 	}
+}
+
+// With returns a new list with keyvals appended. The original list (l)
+// is not modified.
+func (l List) With(keyvals ...interface{}) List {
+	keyvals = Flatten(keyvals)
+	list := make(List, 0, len(l)+len(keyvals))
+	list = append(list, l...)
+	list = append(list, keyvals...)
+	return list
 }
 
 // Pair represents a single key/value pair.

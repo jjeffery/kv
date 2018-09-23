@@ -1,6 +1,7 @@
 package kv_test
 
 import (
+	"context"
 	"fmt"
 	log "fmt" // sleight of hand so example looks like its using the standard log package
 
@@ -171,4 +172,62 @@ func ExampleFlatten() {
 	// msg="message 2" key1=one key2=two
 	// msg=message3 key.1=1 key2=2 key3.1=3.1 key3.2=3.2 key4=4 key5=5
 	// msg="message 4" key1=1 _p1=2
+}
+
+func ExampleContext() {
+	ctx := context.Background()
+
+	// create a new context with keyvals attached.
+	ctx = kv.NewContext(ctx).With("method", "GET", "url", "/api/widgets/1")
+
+	// ... and then later on ...
+
+	// add more context
+	ctx = kv.NewContext(ctx).With("userid", "alice")
+
+	// ... and then later on ...
+
+	// use the values for logging later on
+	log.Println("something happened", kv.Ctx(ctx).With(
+		"code", "red",
+	))
+
+	// Output:
+	// something happened code=red userid=alice method=GET url="/api/widgets/1"
+}
+
+func ExampleMsg() {
+	log.Println(kv.Msg("logging a message").With(
+		"key1", 1,
+		"key2", "two",
+	))
+
+	// Output:
+	// logging a message key1=1 key2=two
+}
+
+func ExampleMessage_Ctx() {
+	ctx := context.Background()
+
+	// create a new context with keyvals attached.
+	ctx = kv.NewContext(ctx).With("method", "GET", "url", "/api/widgets/1")
+
+	// use the values for logging later on
+	log.Println(kv.Msg("something happened").Ctx(ctx))
+
+	// Output:
+	// something happened method=GET url="/api/widgets/1"
+}
+
+func ExampleMessage_Msg() {
+	ctx := context.Background()
+
+	// create a new context with keyvals attached.
+	ctx = kv.NewContext(ctx).With("method", "GET", "url", "/api/widgets/1")
+
+	// use the values for logging later on
+	log.Println(kv.Ctx(ctx).Msg("something happened"))
+
+	// Output:
+	// something happened method=GET url="/api/widgets/1"
 }
