@@ -261,6 +261,13 @@ func TestParseMessage(t *testing.T) {
 		if got, want := Parse([]byte(tt.input)), tt.msg; !msgEqual(&got, &want) {
 			t.Errorf("%d, got=%v, want=%v", tn, got, want)
 		}
+		var msg Message
+		if err := msg.UnmarshalText([]byte(tt.input)); err != nil {
+			t.Errorf("%d: got=%v, want=nil", tn, err)
+		}
+		if got, want := msg, tt.msg; !msgEqual(&got, &want) {
+			t.Errorf("%d: got=%v, want=%v", tn, got, want)
+		}
 	}
 }
 

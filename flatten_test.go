@@ -10,7 +10,6 @@ func TestFlatten(t *testing.T) {
 	tests := []struct {
 		v    []interface{}
 		want []interface{}
-		alt  []interface{}
 	}{
 		{
 			v: []interface{}{
@@ -28,9 +27,6 @@ func TestFlatten(t *testing.T) {
 			want: []interface{}{
 				"key1", "val1", "key2", 2,
 			},
-			alt: []interface{}{
-				"key2", 2, "key1", "val1",
-			},
 		},
 		{
 			v: []interface{}{
@@ -42,9 +38,6 @@ func TestFlatten(t *testing.T) {
 			},
 			want: []interface{}{
 				"key1", "val1", "key2", 2, "key3", 3,
-			},
-			alt: []interface{}{
-				"key2", 2, "key1", "val1", "key3", 3,
 			},
 		},
 		{
@@ -99,9 +92,6 @@ func TestFlatten(t *testing.T) {
 			want: []interface{}{
 				"msg", "message text", "k1", 1, "k2", "2", "k3", 3,
 			},
-			alt: []interface{}{
-				"msg", "message text", "k2", "2", "k1", 1, "k3", 3,
-			},
 		},
 		{
 			v:    []interface{}{io.EOF},
@@ -155,8 +145,7 @@ func TestFlatten(t *testing.T) {
 
 	for i, tt := range tests {
 		got := Flatten(tt.v)
-		if !reflect.DeepEqual(got, tt.want) &&
-			!reflect.DeepEqual(got, tt.alt) {
+		if !reflect.DeepEqual(got, tt.want) {
 			t.Errorf("%d: want %v, got %v", i, tt.want, got)
 		}
 	}
