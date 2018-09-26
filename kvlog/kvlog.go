@@ -8,6 +8,7 @@ package kvlog
 import (
 	"bytes"
 	"io"
+	"os"
 	"regexp"
 	"strings"
 	"sync"
@@ -15,6 +16,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/jjeffery/kv"
+	"github.com/mattn/go-colorable"
 	"golang.org/x/crypto/ssh/terminal"
 )
 
@@ -36,6 +38,11 @@ var (
 		"trace:",
 	}
 
+	// error prefixes get color treatment
+	errorPrefixes = [][]byte{
+		[]byte("error:"),
+	}
+
 	whiteSpaceRE = regexp.MustCompile(`^\s+`)
 	blackSpaceRE = regexp.MustCompile(`^[^\s,]+`)
 )
@@ -43,16 +50,19 @@ var (
 // Writer implements io.Writer and can be used as the writer for
 // log.SetOutput.
 type Writer struct {
-	Out     io.Writer
-	Width   func() int
-	Verbose bool
-	mutex   sync.Mutex
+	Out         io.Writer
+	Width       func() int
+	Verbose     bool
+	colorOutput bool
+	mutex       sync.Mutex
+	origOut     io.Writer
 }
 
 // NewWriter returns a writer that can be used as a writer for the log.
 func NewWriter(writer io.Writer) *Writer {
 	w := &Writer{
-		Out: writer,
+		Out:     writer,
+		origOut: writer,
 	}
 	const defaultWidth = 120
 	if fder, ok := writer.(interface{ Fd() uintptr }); ok {
@@ -66,6 +76,10 @@ func NewWriter(writer io.Writer) *Writer {
 				}
 				return width
 			}
+			if file, ok := writer.(*os.File); ok {
+				w.Out = colorable.NewColorable(file)
+				w.colorOutput = true
+			}
 		}
 	}
 	if w.Width == nil {
@@ -73,6 +87,13 @@ func NewWriter(writer io.Writer) *Writer {
 			return defaultWidth
 		}
 	}
+	return w
+}
+
+// NoColor suppresses any color output.
+func (w *Writer) NoColor() *Writer {
+	w.Out = w.origOut
+	w.colorOutput = false
 	return w
 }
 
@@ -173,7 +194,7 @@ func (w *Writer) Write(p []byte) (int, error) {
 		}
 		// TODO: check if the message text will not fit on one line, and if that is the case display the
 		// text with line-wrapping (which will be slower).
-		if msgText.textRuneCount > width {
+		if msgText.textRuneCount > width || w.colorOutput {
 			// this is where the message itself is too long to fit on one line, so we need to
 			// line wrap
 			in := []byte(msgText.text)
@@ -218,7 +239,27 @@ func (w *Writer) Write(p []byte) (int, error) {
 						sb.WriteRune(' ')
 						col++
 					}
-					sb.Write(bs)
+					if w.colorOutput {
+						var isError bool
+						for _, p := range errorPrefixes {
+							if len(bs) >= len(p) {
+								if bytes.EqualFold(bs[:len(p)], p) {
+									isError = true
+									break
+								}
+							}
+						}
+						if isError {
+							sb.WriteString("\x1b[0;31m")
+							sb.Write(bs)
+							sb.WriteString("\x1b[0m")
+						} else {
+							sb.Write(bs)
+						}
+					} else {
+						sb.Write(bs)
+					}
+
 					col += bsLen
 				}
 				if punctLen > 0 {
