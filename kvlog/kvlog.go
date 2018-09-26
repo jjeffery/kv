@@ -74,7 +74,10 @@ func NewWriter(writer io.Writer) *Writer {
 				if err != nil {
 					return defaultWidth
 				}
-				return width
+				// return one less than the full width: on bit bash windows
+				// if you print the full number of characters you get an ugly
+				// line feed.
+				return width - 1
 			}
 			if file, ok := writer.(*os.File); ok {
 				w.Out = colorable.NewColorable(file)
