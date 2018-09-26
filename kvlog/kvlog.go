@@ -34,6 +34,9 @@ var (
 		"debug:",
 		"trace:",
 	}
+
+	whiteSpaceRE = regexp.MustCompile(`^\s+`)
+	blackSpaceRE = regexp.MustCompile(`^[^\s]+`)
 )
 
 // Writer implements io.Writer and can be used as the writer for
@@ -169,7 +172,36 @@ func (w *Writer) Write(p []byte) (int, error) {
 		}
 		// TODO: check if the message text will not fit on one line, and if that is the case display the
 		// text with line-wrapping (which will be slower).
-		if msgText.textRuneCount > 0 {
+		if msgText.textRuneCount > width {
+			// this is where the message itself is too long to fit on one line, so we need to
+			// line wrap
+			in := []byte(msgText.text)
+			for len(in) > 0 {
+				ws := whiteSpaceRE.Find(in)
+				if len(ws) > 0 {
+					in = in[len(ws):]
+				}
+				bs := blackSpaceRE.Find(in)
+				if len(bs) > 0 {
+					in = in[len(bs):]
+				}
+				bsLen := utf8.RuneCount(bs)
+				if bsLen+1+col > width {
+					sb.WriteString(newline)
+					sb.WriteString(indent)
+					sb.Write(bs)
+					col = len(indent) + bsLen
+				} else {
+					if len(ws) > 0 {
+						sb.WriteRune(' ')
+						col++
+					}
+					sb.Write(bs)
+					col += bsLen
+				}
+			}
+			needSpace = 1
+		} else if msgText.textRuneCount > 0 {
 			if needSpace > 0 {
 				sb.WriteRune(' ')
 				col++
