@@ -1,3 +1,8 @@
+// This needs significant optimization, mainly to reduce memory
+// allocation.
+
+// Package kvlog provides a writer intended for use with the
+// Go standard library log package.
 package kvlog
 
 import (
