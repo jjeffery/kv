@@ -4,8 +4,9 @@ go:
   - 1.10
 
 install:
-  - go get github.com/go-logfmt/logfmt
   - go get golang.org/x/tools/cmd/cover
+  - go get golang.org/x/crypto/ssh/terminal
+  - go get github.com/mattn/go-colorable
   - go get github.com/mattn/goveralls
 
 script:
