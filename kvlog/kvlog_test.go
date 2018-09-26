@@ -50,6 +50,19 @@ func TestWriter(t *testing.T) {
 				"         file not found\n",
 			width: 60,
 		},
+		{
+			input: `11:17:29 select "id","version","created_at","updated_at","status","message","nick_name","user_id",` +
+				`"customer_type","customer_company_name","customer_trading_name","customer_abn",` +
+				`"customer_acn","customer_phone_number","customer_fax_number","customer_first_name",` +
+				`"customer_last_name","customer_middle_names","customer_mobile_number",` +
+				`"customer_date_of_birth" from customers where id > $1 order by id limit $2 [14 10]`,
+			output: `11:17:29 select "id","version","created_at","updated_at","status","message","nick_name","user_id",` + "\n" +
+				`         "customer_type","customer_company_name","customer_trading_name","customer_abn",` + "\n" +
+				`         "customer_acn","customer_phone_number","customer_fax_number","customer_first_name",` + "\n" +
+				`         "customer_last_name","customer_middle_names","customer_mobile_number",` + "\n" +
+				`         "customer_date_of_birth" from customers where id > $1 order by id limit $2 [14 10]` + "\n",
+			width: 100,
+		},
 	}
 
 	for tn, tt := range tests {

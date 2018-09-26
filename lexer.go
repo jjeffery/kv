@@ -101,7 +101,7 @@ func (lex *lexer) quoted(quote rune) bool {
 
 	// lose any ":" separator after a quoted value
 	ch, _, err := lex.reader.ReadRune()
-	if err != nil && ch != ':' {
+	if err == nil && ch != ':' {
 		lex.reader.UnreadRune()
 	}
 	if ch == '=' {

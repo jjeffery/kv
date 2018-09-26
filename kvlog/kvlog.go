@@ -11,6 +11,7 @@ import (
 	"regexp"
 	"strings"
 	"sync"
+	"unicode"
 	"unicode/utf8"
 
 	"github.com/jjeffery/kv"
@@ -36,7 +37,7 @@ var (
 	}
 
 	whiteSpaceRE = regexp.MustCompile(`^\s+`)
-	blackSpaceRE = regexp.MustCompile(`^[^\s]+`)
+	blackSpaceRE = regexp.MustCompile(`^[^\s,]+`)
 )
 
 // Writer implements io.Writer and can be used as the writer for
@@ -181,12 +182,33 @@ func (w *Writer) Write(p []byte) (int, error) {
 				if len(ws) > 0 {
 					in = in[len(ws):]
 				}
+				var wsLen int
+				if len(ws) > 0 {
+					wsLen = 1
+				}
 				bs := blackSpaceRE.Find(in)
 				if len(bs) > 0 {
 					in = in[len(bs):]
 				}
 				bsLen := utf8.RuneCount(bs)
-				if bsLen+1+col > width {
+
+				// The black space RE will terminate before punctuation to handle very long
+				// strings with no spaces but possibly punctuation. Detect if it has terminated
+				// before punctuation, and if so include the punctuation char on the same line.
+				var (
+					punct    rune
+					punctLen int
+				)
+				if len(in) > 0 {
+					var size int
+					punct, size = utf8.DecodeRune(in)
+					if !unicode.IsSpace(punct) {
+						punctLen = size
+						in = in[size:]
+					}
+				}
+
+				if bsLen+wsLen+punctLen+col > width {
 					sb.WriteString(newline)
 					sb.WriteString(indent)
 					sb.Write(bs)
@@ -198,6 +220,10 @@ func (w *Writer) Write(p []byte) (int, error) {
 					}
 					sb.Write(bs)
 					col += bsLen
+				}
+				if punctLen > 0 {
+					sb.WriteRune(punct)
+					col += punctLen
 				}
 			}
 			needSpace = 1

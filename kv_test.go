@@ -129,6 +129,13 @@ func TestParseMessage(t *testing.T) {
 		msg   Message
 	}{
 		{
+			input: `select "id","name","location" from "table" where "id" = $1 [25]`,
+			msg: Message{
+				Text: `select "id","name","location" from "table" where "id" = $1 [25]`,
+				List: nil,
+			},
+		},
+		{
 			input: `this is the message key1=1 key2="2"`,
 			msg: Message{
 				Text: "this is the message",
