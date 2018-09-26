@@ -27,14 +27,22 @@ var (
 	// to work fine as the same value for all operating systems.
 	// TODO: change to a const.
 	newline = "\n"
+
+	// verbosePrefixes is a list of prefixes that indicate the message should only
+	// be displayed in verbose mode
+	verbosePrefixes = []string{
+		"debug:",
+		"trace:",
+	}
 )
 
 // Writer implements io.Writer and can be used as the writer for
 // log.SetOutput.
 type Writer struct {
-	Out   io.Writer
-	Width func() int
-	mutex sync.Mutex
+	Out     io.Writer
+	Width   func() int
+	Verbose bool
+	mutex   sync.Mutex
 }
 
 // NewWriter returns a writer that can be used as a writer for the log.
@@ -89,6 +97,14 @@ func (w *Writer) Write(p []byte) (int, error) {
 		if len(match) > 0 {
 			prefix = match[0]
 			msg.Text = msg.Text[len(prefix):]
+		}
+	}
+	if !w.Verbose {
+		for _, vp := range verbosePrefixes {
+			if strings.HasPrefix(msg.Text, vp) {
+				// suppress verbose messages
+				return 0, nil
+			}
 		}
 	}
 	width := w.Width()
