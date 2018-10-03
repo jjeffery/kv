@@ -10,7 +10,6 @@ const (
 	tokEOF = iota
 	tokWord
 	tokWS
-	tokEquals
 	tokKey
 	tokQuoted
 	tokQuotedKey
@@ -40,9 +39,6 @@ func (lex *lexer) next() bool {
 	}
 	if ch == '"' {
 		return lex.quoted(ch)
-	}
-	if ch == '=' {
-		return lex.equals(ch)
 	}
 
 	return lex.word(ch)
@@ -75,6 +71,7 @@ func (lex *lexer) whiteSpace(ch rune) bool {
 }
 
 func (lex *lexer) quoted(quote rune) bool {
+	lex.token = tokQuoted
 	var buf bytes.Buffer
 	var escaped bool
 	buf.WriteRune(quote)
@@ -101,13 +98,18 @@ func (lex *lexer) quoted(quote rune) bool {
 
 	// lose any ":" separator after a quoted value
 	ch, _, err := lex.reader.ReadRune()
-	if err == nil && ch != ':' {
-		lex.reader.UnreadRune()
-	}
-	if ch == '=' {
-		lex.token = tokQuotedKey
-	} else {
-		lex.token = tokQuoted
+	if err == nil {
+		switch ch {
+		case ':':
+			// remove any ':' separator after a quoted value
+			break
+		case '=':
+			// an equals at the end of a quoted value means treat
+			// it as a keyword
+			lex.token = tokQuotedKey
+		default:
+			lex.reader.UnreadRune()
+		}
 	}
 	lex.lexeme = buf.Bytes()
 	return true
@@ -128,28 +130,37 @@ func (lex *lexer) word(ch rune) bool {
 			break
 		}
 		if ch == '=' {
+			// Only consider this a keyword if the next character
+			// after the equals is a non-space character. This picks
+			// up cases where, for example, a base64 value is logged
+			// that has one or more '=' chars at the end.
+			ch, _, err = lex.reader.ReadRune()
+			if err != nil {
+				// eof, so the equals is just part of the word
+				buf.WriteRune('=')
+				break
+			}
 			lex.reader.UnreadRune()
-			token = tokKey
+			if unicode.IsSpace(ch) {
+				// equals is part of the word
+				buf.WriteRune('=')
+			} else {
+				// next char is non-space, so we consider
+				// this to be a keyword
+				token = tokKey
+			}
 			break
 		}
-		// <HACK>
-		if lex.token == tokEquals {
+		if lex.token == tokKey || lex.token == tokQuotedKey {
 			// unquoted colon terminates a value
 			if ch == ':' {
 				break
 			}
 		}
-		// </HACK>
 		buf.WriteRune(ch)
 	}
 	lex.token = token
 	lex.lexeme = buf.Bytes()
-	return true
-}
-
-func (lex *lexer) equals(ch rune) bool {
-	lex.lexeme = []byte{byte(ch)}
-	lex.token = tokEquals
 	return true
 }
 

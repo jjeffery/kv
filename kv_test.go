@@ -158,10 +158,8 @@ func TestParseMessage(t *testing.T) {
 		{
 			input: `this is the message key1=`,
 			msg: Message{
-				Text: "this is the message",
-				List: List{
-					"key1", "",
-				},
+				Text: "this is the message key1=",
+				List: List{},
 			},
 		},
 		{
@@ -174,9 +172,9 @@ func TestParseMessage(t *testing.T) {
 			},
 		},
 		{
-			input: `message key1== key2= key3=x`,
+			input: `message a8r5t= key1== key2="" key3=x`,
 			msg: Message{
-				Text: "message",
+				Text: "message a8r5t=",
 				List: List{
 					"key1", "=",
 					"key2", "",
@@ -266,14 +264,14 @@ func TestParseMessage(t *testing.T) {
 
 	for tn, tt := range tests {
 		if got, want := Parse([]byte(tt.input)), tt.msg; !msgEqual(&got, &want) {
-			t.Errorf("%d, got=%v, want=%v", tn, got, want)
+			t.Errorf("%d, got=%v\nwant=%v", tn, got, want)
 		}
 		var msg Message
 		if err := msg.UnmarshalText([]byte(tt.input)); err != nil {
-			t.Errorf("%d: got=%v, want=nil", tn, err)
+			t.Errorf("%d: got=%v\nwant=nil", tn, err)
 		}
 		if got, want := msg, tt.msg; !msgEqual(&got, &want) {
-			t.Errorf("%d: got=%v, want=%v", tn, got, want)
+			t.Errorf("%d: got=%v\nwant=%v", tn, got, want)
 		}
 	}
 }

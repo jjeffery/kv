@@ -125,17 +125,11 @@ func newMessage(lex *lexer) *Message {
 		} else {
 			message.List = append(message.List, unquote(lex.lexeme))
 		}
-		// move past equals
 		lex.next()
-		if lex.token == tokEquals {
-			lex.next()
-		}
 
 		switch lex.token {
 		case tokQuoted:
 			message.List = append(message.List, unquote(lex.lexeme))
-		case tokWS:
-			message.List = append(message.List, "")
 		default:
 			message.List = append(message.List, string(lex.lexeme))
 		}
