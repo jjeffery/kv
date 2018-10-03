@@ -47,6 +47,15 @@ var (
 	blackSpaceRE = regexp.MustCompile(`^[^\s,]+`)
 )
 
+// IsTerminal returns true if the writer is a terminal.
+func IsTerminal(writer io.Writer) bool {
+	if fder, ok := writer.(interface{ Fd() uintptr }); ok {
+		fd := int(fder.Fd())
+		return terminal.IsTerminal(fd)
+	}
+	return false
+}
+
 // Writer implements io.Writer and can be used as the writer for
 // log.SetOutput.
 type Writer struct {
@@ -64,7 +73,7 @@ func NewWriter(writer io.Writer) *Writer {
 		Out:     writer,
 		origOut: writer,
 	}
-	const defaultWidth = 120
+	const defaultWidth = 170
 	if fder, ok := writer.(interface{ Fd() uintptr }); ok {
 		fd := int(fder.Fd())
 
