@@ -262,7 +262,7 @@ func TestParseMessage(t *testing.T) {
 	}
 
 	for tn, tt := range tests {
-		if got, want := Parse([]byte(tt.input)), tt.msg; !msgEqual(&got, &want) {
+		if got, want := Parse([]byte(tt.input)), tt.msg; !msgEqual(got, &want) {
 			t.Errorf("%d, got=%v\nwant=%v", tn, got, want)
 		}
 		var msg Message
@@ -276,7 +276,7 @@ func TestParseMessage(t *testing.T) {
 }
 
 func TestEdgeCases(t *testing.T) {
-	if got, want := Ctx(nil).With(), (Message{}); !msgEqual(&got, &want) {
+	if got, want := Ctx(nil).With(), (Message{}); !msgEqual(got, &want) {
 		t.Errorf("got=%v, want=%v", got, want)
 	}
 

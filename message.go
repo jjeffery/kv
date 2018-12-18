@@ -3,6 +3,7 @@ package kv
 import (
 	"bytes"
 	"context"
+	"log"
 	"strconv"
 )
 
@@ -17,66 +18,71 @@ type Message struct {
 // Ctx returns a message populated with key/values from the context.
 //
 // See the example for NewContext.
-func Ctx(ctx context.Context) Message {
-	return Message{
+func Ctx(ctx context.Context) *Message {
+	return &Message{
 		ContextList: fromContext(ctx),
 	}
 }
 
 // Msg returns a message with text.
-func Msg(text string) Message {
-	return Message{
+func Msg(text string) *Message {
+	return &Message{
 		Text: text,
 	}
 }
 
 // Parse parses the input to produce a message.
-func Parse(input []byte) Message {
+func Parse(input []byte) *Message {
 	input = bytes.TrimSpace(input)
 	lex := newLexer(input)
 	msg := newMessage(lex)
-	if msg == nil {
-		return Message{}
-	}
-	return *msg
+	return msg
 }
 
 // With returns a list with keyvals as contents.
-func With(keyvals ...interface{}) Message {
+func With(keyvals ...interface{}) *Message {
 	keyvals = Flatten(keyvals)
-	return Message{
+	return &Message{
 		List: keyvals,
 	}
 }
 
+func (msg *Message) clone() *Message {
+	m := *msg
+	return &m
+}
+
 // Ctx returns a message populated with key/values from the context.
-func (msg Message) Ctx(ctx context.Context) Message {
+func (msg *Message) Ctx(ctx context.Context) *Message {
+	msg = msg.clone()
 	msg.ContextList = fromContext(ctx)
 	return msg
 }
 
 // Msg returns a message with text.
-func (msg Message) Msg(text string) Message {
+func (msg *Message) Msg(text string) *Message {
+	msg = msg.clone()
 	msg.Text = text
 	return msg
 }
 
 // With returns a message with the keyvals appended.
-func (msg Message) With(keyvals ...interface{}) Message {
+func (msg *Message) With(keyvals ...interface{}) *Message {
+	msg = msg.clone()
 	msg.List = msg.List.With(keyvals...)
 	return msg
 }
 
 // String returns a string representation of the message in
 // the format format: "text key1=value1 key2=value2  ...".
-func (msg Message) String() string {
+func (msg *Message) String() string {
 	var buf bytes.Buffer
 	msg.writeToBuffer(&buf)
 	return buf.String()
 }
 
 // MarshalText implements the TextMarshaler interface.
-func (msg Message) MarshalText() (text []byte, err error) {
+func (msg *Message) MarshalText() (text []byte, err error) {
 	var buf bytes.Buffer
 	msg.writeToBuffer(&buf)
 	return buf.Bytes(), nil
@@ -84,8 +90,14 @@ func (msg Message) MarshalText() (text []byte, err error) {
 
 // UnmarshalText implements the TextUnmarshaler interface.
 func (msg *Message) UnmarshalText(text []byte) error {
-	*msg = Parse(text)
+	m := Parse(text)
+	*msg = *m
 	return nil
+}
+
+// Log logs the message.
+func (msg *Message) Log() {
+	log.Println(msg)
 }
 
 func (msg *Message) writeToBuffer(buf *bytes.Buffer) {

@@ -15,16 +15,16 @@ type Error struct {
 }
 
 // Err returns an error that formats as the given text.
-func Err(text string) Error {
-	return Error{
+func Err(text string) *Error {
+	return &Error{
 		Text: text,
 	}
 }
 
 // Wrap returns an error that wraps err, optionally annotating
 // with the message text.
-func Wrap(err error, text ...string) Error {
-	e := Error{
+func Wrap(err error, text ...string) *Error {
+	e := &Error{
 		Err: err,
 	}
 	if len(text) > 0 {
@@ -33,17 +33,22 @@ func Wrap(err error, text ...string) Error {
 	return e
 }
 
+func (e *Error) clone() *Error {
+	e2 := *e
+	return &e2
+}
+
 // Error implements the error interface.
 //
 // The string returned prints the error text of this error
 // any any wrapped errors, each separated by a colon and a space (": ").
 // After the error message (or messages) comes the key/value pairs.
-func (e Error) Error() string {
+func (e *Error) Error() string {
 	var texts []string
 	var list List
 	var ctxList List
 
-	addError := func(e Error) {
+	addError := func(e *Error) {
 		if e.Text != "" {
 			texts = append(texts, e.Text)
 		}
@@ -54,7 +59,7 @@ func (e Error) Error() string {
 	addError(e)
 
 	for err := e.Err; err != nil; {
-		if e2, ok := err.(Error); ok {
+		if e2, ok := err.(*Error); ok {
 			addError(e2)
 			err = e2.Err
 			continue
@@ -90,20 +95,22 @@ func (e Error) Error() string {
 // Unwrap implements the Wrapper interface.
 //
 // See https://go.googlesource.com/proposal/+/master/design/go2draft-error-inspection.md
-func (e Error) Unwrap() error {
+func (e *Error) Unwrap() error {
 	return e.Err
 }
 
 // With returns an error based on e, but with additional key/value
 // pairs associated.
-func (e Error) With(keyvals ...interface{}) Error {
+func (e *Error) With(keyvals ...interface{}) *Error {
+	e = e.clone()
 	e.List = e.List.With(keyvals...)
 	return e
 }
 
 // Ctx returns an error based on e, but with additional key/value
 // pairs extracted from the context.
-func (e Error) Ctx(ctx context.Context) Error {
+func (e *Error) Ctx(ctx context.Context) *Error {
+	e = e.clone()
 	e.ContextList = fromContext(ctx)
 	return e
 }
