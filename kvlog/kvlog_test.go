@@ -26,6 +26,12 @@ func TestWriter(t *testing.T) {
 			width: 70,
 		},
 		{
+			input: "prog [400] 2099/12/31 12:34:56 this is the message key1=value1 key2=value2 key3=value3\n",
+			output: "prog [400] 2099/12/31 12:34:56 this is the message key1=value1\n" +
+				"                               key2=value2 key3=value3\n",
+			width: 70,
+		},
+		{
 			input:  "2099/12/31 12:34:56 this is the message key1=value1 key2=value2 key3=value3\n",
 			output: "2099/12/31 12:34:56 this is the message key1=value1 key2=value2 key3=value3\n",
 			width:  80,

@@ -24,7 +24,12 @@ var (
 	// headerRE matches the possible combinations of date and/or time that the
 	// stdlib log package will produce. No attempt is made to match the file/line
 	// but it could be added.
-	headerRE = regexp.MustCompile(`^(\d{4}/\d\d/\d\d )?(\d\d:\d\d:\d\d(\.\d{0,6})? )?`)
+	//headerRE = regexp.MustCompile(`^(\d{4}/\d\d/\d\d )?(\d\d:\d\d:\d\d(\.\d{0,6})? )?`)
+	headerRE = regexp.MustCompile(
+		`^([^0-9][\w!@#$%^&*()_+={}|;:,.<>/?[\]-]*\s*)*` + // prefix (group 1)
+			`(\d{4}/\d\d/\d\d )?` + // date (yyyy/mm/dd) (group 2)
+			`(\d\d:\d\d:\d\d(\.\d{0,6})? )?`, // time (hh:mm:ss.9999) (groups 3 and 4)
+	)
 
 	// newline is the newline sequence. Originally changed if windows, but seems
 	// to work fine as the same value for all operating systems.
@@ -132,8 +137,14 @@ func (w *Writer) Write(p []byte) (int, error) {
 	{
 		match := headerRE.FindStringSubmatch(msg.Text)
 		if len(match) > 0 {
-			prefix = match[0]
-			msg.Text = msg.Text[len(prefix):]
+			// If match is non-nil, then it will be length 5.
+			// Need a match on the date (group 2) or the time (group 3)
+			// for us to be reasonably sure this is the prefix of the
+			// log package.
+			if len(match[2]) > 0 || len(match[3]) > 0 {
+				prefix = match[0]
+				msg.Text = msg.Text[len(prefix):]
+			}
 		}
 	}
 	if !w.Verbose {
