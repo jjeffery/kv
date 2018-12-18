@@ -31,13 +31,15 @@ fmt.Println(l, m, p)
 If you like the simplicity of logging with key value pairs but are not ready to
 move away from the standard library `log` package you can use this package to 
 render your key value pairs.
-  log.Println("this is a log message", kv.List{
-      "key1", "value 1",
-      "key2", 2,
-  })
+```go
+log.Println("this is a log message", kv.List{
+    "key1", "value 1",
+    "key2", 2,
+})
 
-  // Output:
-  // this is a log message key1="value 1" key2=2
+// Output:
+// this is a log message key1="value 1" key2=2
+```
 
 ### Messages, errors, context
 
@@ -74,7 +76,7 @@ fmt.Println(msg2)
 // second message key2="value 2" url="/api/widgets" method=get
 ```
 
-Errors can be constructed easily with key/value pairs:
+Errors are easily constructed with key/value pairs:
 ```go
 // Create a new error
 err := kv.Err("composite literal uses unkeyed fields").With("file", filename, "line", lineno)

@@ -48,7 +48,7 @@ Key/value pairs can be stored in the context:
  // Output:
  // second message key2="value 2" url="/api/widgets" method=get
 
-Errors can be constructed easily with key/value pairs:
+Errors are easily constructed with key/value pairs:
 
  // Create a new error
  err := kv.Err("composite literal uses unkeyed fields").With("file", filename, "line", lineno)
