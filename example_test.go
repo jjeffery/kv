@@ -130,27 +130,14 @@ func ExampleMap() {
 }
 
 func ExampleFlatten() {
-	// log function prints to stdout.
-	log := func(v ...interface{}) {
-		list := kv.List(kv.Flatten(v))
+	// printKV flattens, fixes and prints args as key/value pairs
+	printKV := func(args ...interface{}) {
+		list := kv.List(kv.Flatten(args))
 		fmt.Println(list)
 	}
 
-	// Typical usage: structured logging
-	log("msg", "message 1", "key1", 1, "key2", 2)
-
-	// Message can be split into individual key/value pairs.
-	log(kv.P("msg", "message 1"), kv.P("key1", 1), kv.P("key2", 2))
-
-	// Assumes the first string without a keyword is the message ("msg").
-	// Use a map for key/value pairs where the order is not important.
-	log("message 2", kv.Map{
-		"key1": "one",
-		"key2": "two",
-	})
-
-	// A more complex, and probably unrealistic example of mixing styles.
-	log("message3",
+	// flatten: multiple lists, maps, pairs are flattened
+	printKV("message1",
 		kv.List{
 			"key.1", 1,
 			"key2", 2,
@@ -163,16 +150,12 @@ func ExampleFlatten() {
 		kv.P("key5", 5),
 	)
 
-	// If a key is missing, one will be inserted to make the keyvals
-	// slice valid.
-	log("msg", "message 4", "key1", 1, 2)
+	// fix: if a key is missing, one will be inserted to make the keyvals slice valid.
+	printKV("msg", "message 2", "key1", 1, 2)
 
 	// Output:
-	// msg="message 1" key1=1 key2=2
-	// msg="message 1" key1=1 key2=2
-	// msg="message 2" key1=one key2=two
-	// msg=message3 key.1=1 key2=2 key3.1=3.1 key3.2=3.2 key4=4 key5=5
-	// msg="message 4" key1=1 _p1=2
+	// msg=message1 key.1=1 key2=2 key3.1=3.1 key3.2=3.2 key4=4 key5=5
+	// msg="message 2" key1=1 _p1=2
 }
 
 func ExampleContext() {

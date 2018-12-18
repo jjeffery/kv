@@ -22,8 +22,6 @@ type Message struct {
 }
 
 // Ctx returns a message populated with key/values from the context.
-//
-// See the example for NewContext.
 func Ctx(ctx context.Context) *Message {
 	return &Message{
 		ContextList: fromContext(ctx),
@@ -45,7 +43,7 @@ func Parse(input []byte) *Message {
 	return msg
 }
 
-// With returns a list with keyvals as contents.
+// With returns a message populated with keyvals as the list of key/value pairs.
 func With(keyvals ...interface{}) *Message {
 	keyvals = Flatten(keyvals)
 	return &Message{
@@ -58,21 +56,22 @@ func (msg *Message) clone() *Message {
 	return &m
 }
 
-// Ctx returns a message populated with key/values from the context.
+// Ctx returns a new message based on msg, but populated with key/value pairs from the context.
 func (msg *Message) Ctx(ctx context.Context) *Message {
 	msg = msg.clone()
 	msg.ContextList = fromContext(ctx)
 	return msg
 }
 
-// Msg returns a message with text.
+// Msg returns a new message based on msg, but with text as its message text.
 func (msg *Message) Msg(text string) *Message {
 	msg = msg.clone()
 	msg.Text = text
 	return msg
 }
 
-// With returns a message with the keyvals appended.
+// With returns a new message based on msg, but with the keyvals appended to its
+// list of key/value pairs.
 func (msg *Message) With(keyvals ...interface{}) *Message {
 	msg = msg.clone()
 	msg.List = msg.List.With(keyvals...)

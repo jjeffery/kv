@@ -55,7 +55,7 @@ Errors are easily constructed with key/value pairs:
  fmt.Println(err)
 
  // Output:
- // an error has occurred file="example_test.go" line=92
+ // composite literal uses unkeyed fields file="example_test.go" line=92
 
  // Wrap an existing error
  err = kv.Wrap(err, "vet").With("severity", severity)
