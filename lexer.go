@@ -62,29 +62,31 @@ func (lex *lexer) unreadRune() {
 	}
 }
 
-func (lex *lexer) next() bool {
+func (lex *lexer) next() {
 	lex.start = lex.pos
 	ch, err := lex.readRune()
 	if err != nil {
-		return lex.eof()
+		lex.eof()
+		return
 	}
 	if unicode.IsSpace(ch) {
-		return lex.whiteSpace(ch)
+		lex.whiteSpace(ch)
+		return
 	}
 	if ch == '"' {
-		return lex.quoted(ch)
+		lex.quoted(ch)
+		return
 	}
 
-	return lex.word(ch)
+	lex.word(ch)
 }
 
-func (lex *lexer) eof() bool {
+func (lex *lexer) eof() {
 	lex.token = tokEOF
 	lex.end = lex.pos
-	return false
 }
 
-func (lex *lexer) whiteSpace(ch rune) bool {
+func (lex *lexer) whiteSpace(ch rune) {
 	for {
 		var err error
 		ch, err = lex.readRune()
@@ -98,17 +100,16 @@ func (lex *lexer) whiteSpace(ch rune) bool {
 	}
 	lex.token = tokWS
 	lex.end = lex.pos
-	return true
 }
 
-func (lex *lexer) quoted(quote rune) bool {
+func (lex *lexer) quoted(quote rune) {
 	lex.token = tokQuoted
 	var escaped bool
 	for {
 		ch, err := lex.readRune()
 		if err != nil {
 			lex.end = lex.pos
-			return true
+			return
 		}
 		if escaped {
 			escaped = false
@@ -140,10 +141,9 @@ func (lex *lexer) quoted(quote rune) bool {
 			lex.unreadRune()
 		}
 	}
-	return true
 }
 
-func (lex *lexer) word(ch rune) bool {
+func (lex *lexer) word(ch rune) {
 	token := tokWord
 loop:
 	for {
@@ -207,14 +207,12 @@ loop:
 		}
 	}
 	lex.token = token
-	return true
+	return
 }
 
 func (lex *lexer) skipWS() {
 	for lex.token == tokWS {
-		if !lex.next() {
-			return
-		}
+		lex.next()
 	}
 }
 
