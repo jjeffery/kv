@@ -74,6 +74,29 @@ func (l List) With(keyvals ...interface{}) List {
 	return list
 }
 
+func (l List) dedup() List {
+	contents := Flatten(l)
+	result := make(List, 0, len(contents))
+	m := make(map[string]map[string]struct{})
+
+	for i := 0; i < len(contents); i += 2 {
+		key := contents[i].(string)
+		val := contents[i+1]
+		valstr := valueString(val)
+		valstrs, found := m[key]
+		if !found {
+			valstrs = make(map[string]struct{})
+			m[key] = valstrs
+		}
+		if _, ok := valstrs[valstr]; !ok {
+			result = append(result, key, val)
+			valstrs[valstr] = struct{}{}
+		}
+	}
+
+	return result
+}
+
 // Pair represents a single key/value pair.
 type Pair struct {
 	Key   string

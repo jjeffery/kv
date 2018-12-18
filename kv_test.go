@@ -96,7 +96,7 @@ func TestString(t *testing.T) {
 		},
 		{
 			input: Parse([]byte("message 1 key1=value1 message 2   key2=value2 message 3   key3=value3")),
-			want:  "message 1 key1=value1 message 2 key2=value2 message 3 key3=value3",
+			want:  "message 1 key1=value1 message 2   key2=value2 message 3 key3=value3",
 		},
 	}
 	for i, tt := range tests {
@@ -128,6 +128,26 @@ func TestParseMessage(t *testing.T) {
 		input string
 		msg   Message
 	}{
+		{
+			input: "error: this is the message key1=value1 key2=value2: file not found\n",
+			msg: Message{
+				Text: "error: this is the message key1=value1 key2=value2: file not found",
+			},
+		},
+		{
+			input: `one`,
+			msg: Message{
+				Text: `one`,
+				List: nil,
+			},
+		},
+		{
+			input: "    one\t\n   ",
+			msg: Message{
+				Text: `one`,
+				List: nil,
+			},
+		},
 		{
 			input: `select "id","name","location" from "table" where "id" = $1 [25]`,
 			msg: Message{
@@ -165,18 +185,15 @@ func TestParseMessage(t *testing.T) {
 		{
 			input: `message key1==`,
 			msg: Message{
-				Text: "message",
-				List: List{
-					"key1", "=",
-				},
+				Text: "message key1==",
+				List: List{},
 			},
 		},
 		{
 			input: `message a8r5t= key1== key2="" key3=x`,
 			msg: Message{
-				Text: "message a8r5t=",
+				Text: "message a8r5t= key1==",
 				List: List{
-					"key1", "=",
 					"key2", "",
 					"key3", "x",
 				},
@@ -197,7 +214,7 @@ func TestParseMessage(t *testing.T) {
 			msg: Message{
 				Text: "message",
 				List: List{
-					"key1", "1",
+					"key1", "?",
 				},
 			},
 		},
@@ -214,45 +231,27 @@ func TestParseMessage(t *testing.T) {
 		{ // nested message
 			input: `message 1 key1=1 message 2 key2=2`,
 			msg: Message{
-				Text: "message 1",
+				Text: "message 1 key1=1 message 2",
 				List: List{
-					"key1", "1",
-				},
-				Next: &Message{
-					Text: "message 2",
-					List: List{
-						"key2", "2",
-					},
+					"key2", "2",
 				},
 			},
 		},
 		{ // nested message with colon
 			input: `message 1 key1="1": message 2 key2=2`,
 			msg: Message{
-				Text: "message 1",
+				Text: `message 1 key1="1": message 2`,
 				List: List{
-					"key1", "1",
-				},
-				Next: &Message{
-					Text: "message 2",
-					List: List{
-						"key2", "2",
-					},
+					"key2", "2",
 				},
 			},
 		},
 		{ // nested message with colon
 			input: `message 1 key1=1: message 2 key2=2`,
 			msg: Message{
-				Text: "message 1",
+				Text: "message 1 key1=1: message 2",
 				List: List{
-					"key1", "1",
-				},
-				Next: &Message{
-					Text: "message 2",
-					List: List{
-						"key2", "2",
-					},
+					"key2", "2",
 				},
 			},
 		},
@@ -305,9 +304,6 @@ func msgEqual(m1, m2 *Message) bool {
 		if !reflect.DeepEqual(m1.ContextList, m2.ContextList) {
 			return false
 		}
-	}
-	if !msgEqual(m1.Next, m2.Next) {
-		return false
 	}
 	return true
 }

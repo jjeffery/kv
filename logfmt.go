@@ -13,9 +13,9 @@ import (
 // constant byte values
 var (
 	bytesNull   = []byte("null")
-	bytesPanic  = []byte(`<PANIC>`)
-	bytesError  = []byte(`<ERROR>`)
-	bytesEmptyK = []byte(`<EMPTY>`)
+	bytesPanic  = []byte(`PANIC`)
+	bytesError  = []byte(`ERROR`)
+	bytesEmptyK = []byte(`EMPTY`)
 	bytesEmptyV = []byte(`""`)
 
 	escapeSequences = map[rune]string{
@@ -132,6 +132,12 @@ func writeTextMarshalerKey(buf *bytes.Buffer, t encoding.TextMarshaler) {
 		return
 	}
 	writeBytesKey(buf, b)
+}
+
+func valueString(value interface{}) string {
+	var buf bytes.Buffer
+	writeValue(&buf, value)
+	return buf.String()
 }
 
 func writeValue(buf *bytes.Buffer, value interface{}) {

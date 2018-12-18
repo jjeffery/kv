@@ -45,7 +45,7 @@ func TestWriteKeyValue(t *testing.T) {
 		{
 			key:   "",
 			value: "",
-			want:  `<EMPTY>=""`,
+			want:  `EMPTY=""`,
 		},
 		{
 			key:   nil,
@@ -75,32 +75,32 @@ func TestWriteKeyValue(t *testing.T) {
 		{
 			key:   panicingTextMarshaler("key"),
 			value: panicingTextMarshaler("value"),
-			want:  "<PANIC>=<PANIC>",
+			want:  "PANIC=PANIC",
 		},
 		{
 			key:   "key",
 			value: panicingTextMarshaler("value"),
-			want:  "key=<PANIC>",
+			want:  "key=PANIC",
 		},
 		{
 			key:   panicingTextMarshaler("key"),
 			value: "value",
-			want:  "<PANIC>=value",
+			want:  "PANIC=value",
 		},
 		{
 			key:   failingTextMarshaler("key"),
 			value: failingTextMarshaler("value"),
-			want:  "<ERROR>=<ERROR>",
+			want:  "ERROR=ERROR",
 		},
 		{
 			key:   "key",
 			value: failingTextMarshaler("value"),
-			want:  "key=<ERROR>",
+			want:  "key=ERROR",
 		},
 		{
 			key:   failingTextMarshaler("key"),
 			value: "value",
-			want:  "<ERROR>=value",
+			want:  "ERROR=value",
 		},
 		{
 			key:   func() *string { s := "key"; return &s }(),

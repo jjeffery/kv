@@ -41,15 +41,16 @@ func TestWriter(t *testing.T) {
 			output: "12:34:56 error: this is the message key1=value1 key2=value2: file not found\n",
 		},
 		{
-			input:  "12:34:56 error: this is the message key1=value1 key2=value2: file not found\n",
-			output: "12:34:56 error: this is the message key1=value1 key2=value2\n         file not found\n",
-			width:  70,
+			input: "12:34:56 error: this is the message key1=value1 key2=value2: file not found\n",
+			output: "12:34:56 error: this is the message key1=value1 key2=value2: file not\n" +
+				"         found\n",
+			width: 70,
 		},
 		{
 			input: "12:34:56 error: this is a very long message that will wrap over the line key1=value1 key2=value2: file not found\n",
 			output: "12:34:56 error: this is a very long message that will wrap\n" +
-				"         over the line key1=value1 key2=value2\n" +
-				"         file not found\n",
+				"         over the line key1=value1 key2=value2: file not\n" +
+				"         found\n",
 			width: 60,
 		},
 		{

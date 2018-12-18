@@ -1,9 +1,9 @@
 package kv
 
 import (
-	"bytes"
 	"io"
 	"unicode"
+	"unicode/utf8"
 )
 
 const (
@@ -16,22 +16,56 @@ const (
 )
 
 type lexer struct {
-	reader *bytes.Reader
-	token  int
-	lexeme []byte
+	input []byte // input text, never modified
+	start int    // start position of current lexeme
+	end   int    // end postion of current lexeme
+	pos   int    // current position
+	token int    // current token
 }
 
 func newLexer(input []byte) *lexer {
 	lex := &lexer{
-		reader: bytes.NewReader(input),
+		input: input,
 	}
 	lex.next()
 	return lex
 }
 
+func (lex *lexer) lexeme() []byte {
+	return lex.input[lex.start:lex.end]
+}
+
+func (lex *lexer) rewind() {
+	lex.start = 0
+	lex.end = 0
+	lex.pos = 0
+	lex.token = 0
+	lex.next()
+}
+
+func (lex *lexer) readRune() (rune, error) {
+	ch, size := utf8.DecodeRune(lex.input[lex.pos:])
+	if size == 0 {
+		return 0, io.EOF
+	}
+	if ch == utf8.RuneError {
+		ch = '?'
+	}
+	lex.pos += size
+	return ch, nil
+}
+
+func (lex *lexer) unreadRune() {
+	if lex.pos > 0 {
+		_, size := utf8.DecodeLastRune(lex.input[:lex.pos])
+		lex.pos -= size
+	}
+}
+
 func (lex *lexer) next() bool {
-	ch, _, err := lex.reader.ReadRune()
-	if err == io.EOF {
+	lex.start = lex.pos
+	ch, err := lex.readRune()
+	if err != nil {
 		return lex.eof()
 	}
 	if unicode.IsSpace(ch) {
@@ -46,43 +80,36 @@ func (lex *lexer) next() bool {
 
 func (lex *lexer) eof() bool {
 	lex.token = tokEOF
-	lex.lexeme = nil
+	lex.end = lex.pos
 	return false
 }
 
 func (lex *lexer) whiteSpace(ch rune) bool {
-	var buf bytes.Buffer
-	buf.WriteRune(ch)
 	for {
 		var err error
-		ch, _, err = lex.reader.ReadRune()
+		ch, err = lex.readRune()
 		if err != nil {
 			break
 		}
 		if !unicode.IsSpace(ch) {
-			lex.reader.UnreadRune()
+			lex.unreadRune()
 			break
 		}
-		buf.WriteRune(ch)
 	}
 	lex.token = tokWS
-	lex.lexeme = buf.Bytes()
+	lex.end = lex.pos
 	return true
 }
 
 func (lex *lexer) quoted(quote rune) bool {
 	lex.token = tokQuoted
-	var buf bytes.Buffer
 	var escaped bool
-	buf.WriteRune(quote)
 	for {
-		ch, _, err := lex.reader.ReadRune()
+		ch, err := lex.readRune()
 		if err != nil {
-			// premature end of input
-			buf.WriteRune(quote)
-			break
+			lex.end = lex.pos
+			return true
 		}
-		buf.WriteRune(ch)
 		if escaped {
 			escaped = false
 			continue
@@ -96,8 +123,10 @@ func (lex *lexer) quoted(quote rune) bool {
 		}
 	}
 
+	lex.end = lex.pos
+
 	// lose any ":" separator after a quoted value
-	ch, _, err := lex.reader.ReadRune()
+	ch, err := lex.readRune()
 	if err == nil {
 		switch ch {
 		case ':':
@@ -108,25 +137,24 @@ func (lex *lexer) quoted(quote rune) bool {
 			// it as a keyword
 			lex.token = tokQuotedKey
 		default:
-			lex.reader.UnreadRune()
+			lex.unreadRune()
 		}
 	}
-	lex.lexeme = buf.Bytes()
 	return true
 }
 
 func (lex *lexer) word(ch rune) bool {
-	var buf bytes.Buffer
-	buf.WriteRune(ch)
 	token := tokWord
+loop:
 	for {
 		var err error
-		ch, _, err = lex.reader.ReadRune()
+		lex.end = lex.pos
+		ch, err = lex.readRune()
 		if err != nil {
 			break
 		}
 		if unicode.IsSpace(ch) {
-			lex.reader.UnreadRune()
+			lex.unreadRune()
 			break
 		}
 		if ch == '=' {
@@ -134,21 +162,41 @@ func (lex *lexer) word(ch rune) bool {
 			// after the equals is a non-space character. This picks
 			// up cases where, for example, a base64 value is logged
 			// that has one or more '=' chars at the end.
-			ch, _, err = lex.reader.ReadRune()
+			ch, err = lex.readRune()
 			if err != nil {
 				// eof, so the equals is just part of the word
-				buf.WriteRune('=')
+				lex.end = lex.pos
 				break
 			}
-			lex.reader.UnreadRune()
 			if unicode.IsSpace(ch) {
 				// equals is part of the word
-				buf.WriteRune('=')
-			} else {
-				// next char is non-space, so we consider
-				// this to be a keyword
-				token = tokKey
+				lex.unreadRune()
+				lex.end = lex.pos
+				break
 			}
+			if ch == '=' {
+				// more than one terminating equals, can happen
+				// with base64, base32 style encoding
+				for {
+					ch, err = lex.readRune()
+					if err != nil {
+						lex.end = lex.pos
+						break loop
+					}
+					if unicode.IsSpace(ch) {
+						lex.unreadRune()
+						lex.end = lex.pos
+						break loop
+					}
+				}
+			}
+
+			// Next char is non-space, non-equals, so we consider
+			// this to be a key. Note that end is still pointing
+			// to the beginning of the '=', so it is not part
+			// of the lexeme.
+			lex.unreadRune()
+			token = tokKey
 			break
 		}
 		if lex.token == tokKey || lex.token == tokQuotedKey {
@@ -157,10 +205,8 @@ func (lex *lexer) word(ch rune) bool {
 				break
 			}
 		}
-		buf.WriteRune(ch)
 	}
 	lex.token = token
-	lex.lexeme = buf.Bytes()
 	return true
 }
 

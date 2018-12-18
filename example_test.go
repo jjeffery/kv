@@ -2,6 +2,7 @@ package kv_test
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	log "fmt" // sleight of hand so example looks like its using the standard log package
 
@@ -230,4 +231,14 @@ func ExampleMessage_Msg() {
 
 	// Output:
 	// something happened method=GET url="/api/widgets/1"
+}
+
+func ExampleError_Error() {
+	file := "testing-file"
+	err1 := errors.New("elf header corrupted")
+	err2 := kv.Wrap(err1, "emit macho dwarf").With("file", file)
+	fmt.Println(err2)
+
+	// Output:
+	// emit macho dwarf: elf header corrupted file="testing-file"
 }

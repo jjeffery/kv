@@ -152,163 +152,135 @@ func (w *Writer) Write(p []byte) (int, error) {
 		indent = "    "
 	}
 
-	var msgTexts []messageText
+	msgText := messageText{
+		text:          msg.Text,
+		textRuneCount: utf8.RuneCountInString(msg.Text),
+	}
+	// totalRuneCount is the number of columns required to display the entire message on one line
+	msgText.totalRuneCount = msgText.textRuneCount
 
-	for {
-		msgText := messageText{
-			text:          msg.Text,
-			textRuneCount: utf8.RuneCountInString(msg.Text),
-		}
-		// totalRuneCount is the number of columns required to display the entire message on one line
-		msgText.totalRuneCount = msgText.textRuneCount
-
-		for i := 0; i < len(msg.List); i += 2 {
-			keyval := kv.P(msg.List[i].(string), msg.List[i+1]).String()
-			runeCount := utf8.RuneCountInString(keyval)
-			msgText.keyvals = append(msgText.keyvals, keyvalText{
-				text:          keyval,
-				textRuneCount: runeCount,
-			})
-			// the totalRuneCount includes a "+1" for a space because
-			// it is used to determine if the message will fit all by
-			// itself on one line.
-			msgText.totalRuneCount += runeCount + 1
-		}
-
-		msgTexts = append(msgTexts, msgText)
-		if msg.Next == nil {
-			break
-		}
-
-		msg = *msg.Next
+	for i := 0; i < len(msg.List); i += 2 {
+		keyval := kv.P(msg.List[i].(string), msg.List[i+1]).String()
+		runeCount := utf8.RuneCountInString(keyval)
+		msgText.keyvals = append(msgText.keyvals, keyvalText{
+			text:          keyval,
+			textRuneCount: runeCount,
+		})
+		// the totalRuneCount includes a "+1" for a space because
+		// it is used to determine if the message will fit all by
+		// itself on one line.
+		msgText.totalRuneCount += runeCount + 1
 	}
 
 	var sb bytes.Buffer
 	sb.WriteString(prefix)
 	col := len(prefix)
 	var needSpace int
-	var needColon int
 
-	for i, msgText := range msgTexts {
-		if i > 0 {
-			if col+msgText.totalRuneCount+needSpace+needColon > width {
-				// won't fit the message on the rest of the line, so start a new one
+	// TODO: check if the message text will not fit on one line, and if that is the case display the
+	// text with line-wrapping (which will be slower).
+	if col+msgText.textRuneCount > width || w.colorOutput {
+		// this is where the message itself is too long to fit on one line, so we need to
+		// line wrap
+		in := []byte(msgText.text)
+		for len(in) > 0 {
+			ws := whiteSpaceRE.Find(in)
+			if len(ws) > 0 {
+				in = in[len(ws):]
+			}
+			var wsLen int
+			if len(ws) > 0 {
+				wsLen = 1
+			}
+			bs := blackSpaceRE.Find(in)
+			if len(bs) > 0 {
+				in = in[len(bs):]
+			}
+			bsLen := utf8.RuneCount(bs)
+
+			// The black space RE will terminate before punctuation to handle very long
+			// strings with no spaces but possibly punctuation. Detect if it has terminated
+			// before punctuation, and if so include the punctuation char on the same line.
+			var (
+				punct    rune
+				punctLen int
+			)
+			if len(in) > 0 {
+				var size int
+				punct, size = utf8.DecodeRune(in)
+				if !unicode.IsSpace(punct) {
+					punctLen = size
+					in = in[size:]
+				}
+			}
+
+			if bsLen+wsLen+punctLen+col > width {
 				sb.WriteString(newline)
 				sb.WriteString(indent)
-				col = len(indent)
-				needSpace = 0
-				needColon = 0
-			}
-			if needColon > 0 {
-				sb.WriteRune(':')
-				needColon = 0
-			}
-		}
-		// TODO: check if the message text will not fit on one line, and if that is the case display the
-		// text with line-wrapping (which will be slower).
-		if msgText.textRuneCount > width || w.colorOutput {
-			// this is where the message itself is too long to fit on one line, so we need to
-			// line wrap
-			in := []byte(msgText.text)
-			for len(in) > 0 {
-				ws := whiteSpaceRE.Find(in)
+				sb.Write(bs)
+				col = len(indent) + bsLen
+			} else {
 				if len(ws) > 0 {
-					in = in[len(ws):]
+					sb.WriteRune(' ')
+					col++
 				}
-				var wsLen int
-				if len(ws) > 0 {
-					wsLen = 1
-				}
-				bs := blackSpaceRE.Find(in)
-				if len(bs) > 0 {
-					in = in[len(bs):]
-				}
-				bsLen := utf8.RuneCount(bs)
-
-				// The black space RE will terminate before punctuation to handle very long
-				// strings with no spaces but possibly punctuation. Detect if it has terminated
-				// before punctuation, and if so include the punctuation char on the same line.
-				var (
-					punct    rune
-					punctLen int
-				)
-				if len(in) > 0 {
-					var size int
-					punct, size = utf8.DecodeRune(in)
-					if !unicode.IsSpace(punct) {
-						punctLen = size
-						in = in[size:]
-					}
-				}
-
-				if bsLen+wsLen+punctLen+col > width {
-					sb.WriteString(newline)
-					sb.WriteString(indent)
-					sb.Write(bs)
-					col = len(indent) + bsLen
-				} else {
-					if len(ws) > 0 {
-						sb.WriteRune(' ')
-						col++
-					}
-					if w.colorOutput {
-						var isError bool
-						for _, p := range errorPrefixes {
-							if len(bs) >= len(p) {
-								if bytes.EqualFold(bs[:len(p)], p) {
-									isError = true
-									break
-								}
+				if w.colorOutput {
+					var isError bool
+					for _, p := range errorPrefixes {
+						if len(bs) >= len(p) {
+							if bytes.EqualFold(bs[:len(p)], p) {
+								isError = true
+								break
 							}
 						}
-						if isError {
-							sb.WriteString("\x1b[0;31m")
-							sb.Write(bs)
-							sb.WriteString("\x1b[0m")
-						} else {
-							sb.Write(bs)
-						}
+					}
+					if isError {
+						sb.WriteString("\x1b[0;31m")
+						sb.Write(bs)
+						sb.WriteString("\x1b[0m")
 					} else {
 						sb.Write(bs)
 					}
-
-					col += bsLen
+				} else {
+					sb.Write(bs)
 				}
-				if punctLen > 0 {
-					sb.WriteRune(punct)
-					col += punctLen
-				}
-			}
-			needSpace = 1
-		} else if msgText.textRuneCount > 0 {
-			if needSpace > 0 {
-				sb.WriteRune(' ')
-				col++
-				needSpace = 0
-			}
-			sb.WriteString(msgText.text)
-			col += msgText.textRuneCount
-			needSpace = 1
-		}
 
-		for _, keyvalText := range msgText.keyvals {
-			if keyvalText.textRuneCount+needSpace+col > width {
-				sb.WriteString(newline)
-				sb.WriteString(indent)
-				col = len(indent)
-				needSpace = 0
+				col += bsLen
 			}
-			if needSpace > 0 {
-				sb.WriteRune(' ')
-				needSpace = 0
-				col++
+			if punctLen > 0 {
+				sb.WriteRune(punct)
+				col += punctLen
 			}
-			sb.WriteString(keyvalText.text)
-			col += keyvalText.textRuneCount
-			needSpace = 1
 		}
-		needColon = 1
+		needSpace = 1
+	} else if msgText.textRuneCount > 0 {
+		if needSpace > 0 {
+			sb.WriteRune(' ')
+			col++
+			needSpace = 0
+		}
+		sb.WriteString(msgText.text)
+		col += msgText.textRuneCount
+		needSpace = 1
 	}
+
+	for _, keyvalText := range msgText.keyvals {
+		if keyvalText.textRuneCount+needSpace+col > width {
+			sb.WriteString(newline)
+			sb.WriteString(indent)
+			col = len(indent)
+			needSpace = 0
+		}
+		if needSpace > 0 {
+			sb.WriteRune(' ')
+			needSpace = 0
+			col++
+		}
+		sb.WriteString(keyvalText.text)
+		col += keyvalText.textRuneCount
+		needSpace = 1
+	}
+
 	sb.WriteString(newline)
 
 	w.mutex.Lock()

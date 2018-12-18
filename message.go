@@ -7,13 +7,11 @@ import (
 )
 
 // A Message consists of message text followed by
-// zero or more key/value pairs, optionally followed by
-// another message.
+// zero or more key/value pairs.
 type Message struct {
-	List        List
-	ContextList List
-	Text        string
-	Next        *Message
+	Text        string // message text
+	List        List   // key value pairs
+	ContextList List   // key value pairs from context
 }
 
 // Ctx returns a message populated with key/values from the context.
@@ -34,6 +32,7 @@ func Msg(text string) Message {
 
 // Parse parses the input to produce a message.
 func Parse(input []byte) Message {
+	input = bytes.TrimSpace(input)
 	lex := newLexer(input)
 	msg := newMessage(lex)
 	if msg == nil {
@@ -93,56 +92,108 @@ func (msg *Message) writeToBuffer(buf *bytes.Buffer) {
 	if msg == nil {
 		return
 	}
-	if buf.Len() > 0 && len(msg.Text) > 0 {
-		buf.WriteRune(' ')
+	if msg.Text == "" && len(msg.List) == 0 && len(msg.ContextList) == 0 {
+		return
 	}
-	buf.WriteString(msg.Text)
-	msg.List.writeToBuffer(buf)
-	msg.ContextList.writeToBuffer(buf)
-	msg.Next.writeToBuffer(buf)
+	if msg.Text != "" {
+		if buf.Len() > 0 {
+			buf.WriteRune(' ')
+		}
+		buf.WriteString(msg.Text)
+	}
+	if len(msg.ContextList) == 0 {
+		// only the message list
+		msg.List.dedup().writeToBuffer(buf)
+	} else if len(msg.List) == 0 {
+		msg.ContextList.dedup().writeToBuffer(buf)
+	} else {
+		var list List
+		list = list.With(msg.List...)
+		list = list.With(msg.ContextList...)
+		list.dedup().writeToBuffer(buf)
+	}
 }
 
 func newMessage(lex *lexer) *Message {
-	var message Message
-	var text []byte
+	// firstKeyPos is the position of the first key in the message
+	//
+	// consider the following example message:
+	//
+	//  this is a message key=1 key=2 more message stuff key=3
+	//                                                   ^
+	// if a message has key=val and then text that       |
+	// does not match key=val, then the key=val is       |
+	// not parsed for example, the first key is here ----+
+	var firstKeyPos int
 
-	lex.skipWS()
-	for lex.notMatch(tokKey, tokQuotedKey, tokEOF) {
-		text = append(text, lex.lexeme...)
-		lex.next()
+	// count kv pairs so that we can allocate once only
+	var kvCount int
+
+	// iterate through the message looking for the position
+	// before which we will not be looking for key/val pairs
+	for lex.token != tokEOF {
+		for lex.notMatch(tokKey, tokQuotedKey, tokEOF) {
+			firstKeyPos = 0
+			lex.next()
+		}
+		if lex.token == tokEOF {
+			break
+		}
+		firstKeyPos = lex.pos
+		for lex.match(tokKey, tokQuotedKey) {
+			kvCount += 2
+			lex.next() // skip past key
+			lex.next() // skip past value
+			lex.skipWS()
+		}
 	}
 
-	if len(text) == 0 && lex.token == tokEOF {
-		// nothing to read
-		return nil
+	lex.rewind()
+	lex.skipWS()
+	var (
+		text    []byte
+		message Message
+	)
+
+	if firstKeyPos == 0 {
+		// there are no key/value pairs
+		text = lex.input
+	} else {
+		message.List = make(List, 0, kvCount)
+		var pos int
+		for lex.pos < firstKeyPos {
+			pos = lex.pos
+			lex.next()
+		}
+		text = lex.input[:pos]
+		for lex.match(tokKey, tokQuotedKey) {
+			if lex.token == tokKey {
+				message.List = append(message.List, string(lex.lexeme()))
+			} else {
+				message.List = append(message.List, unquote(lex.lexeme()))
+			}
+			lex.next()
+
+			switch lex.token {
+			case tokQuoted:
+				message.List = append(message.List, unquote(lex.lexeme()))
+			default:
+				message.List = append(message.List, string(lex.lexeme()))
+			}
+
+			lex.next()
+			lex.skipWS()
+		}
 	}
 
 	message.Text = string(bytes.TrimSpace(text))
-
-	for lex.match(tokKey, tokQuotedKey) {
-		if lex.token == tokKey {
-			message.List = append(message.List, string(lex.lexeme))
-		} else {
-			message.List = append(message.List, unquote(lex.lexeme))
-		}
-		lex.next()
-
-		switch lex.token {
-		case tokQuoted:
-			message.List = append(message.List, unquote(lex.lexeme))
-		default:
-			message.List = append(message.List, string(lex.lexeme))
-		}
-
-		lex.next()
-		lex.skipWS()
-	}
-
-	message.Next = newMessage(lex)
 	return &message
 }
 
 func unquote(input []byte) string {
-	s, _ := strconv.Unquote(string(input))
+	s, err := strconv.Unquote(string(input))
+	if err != nil {
+		return "?"
+	}
 	return s
 }
