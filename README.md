@@ -36,7 +36,7 @@ key=value1 key=value2 key3=value3
 ```
 
 Key/values can be stored in the context.
-```
+```go
 ctx := context.Background()
 
 // associate some key/value pairs with the context
@@ -54,6 +54,23 @@ fmt.Println(msg2)
 // Output:
 // first message key1="value 1"
 // second message key2="value 2" url="/api/widgets" method=get
+```
+
+Errors can be constructed easily with key/value pairs:
+```go
+// Create a new error
+err := kv.Err("composite literal uses unkeyed fields").With("file", filename, "line", lineno)
+fmt.Println(err)
+
+// Output:
+// an error has occurred file="example_test.go" line=92
+
+// Wrap an existing error
+err = kv.Wrap(err, "vet").With("severity", severity)
+fmt.Println(err)
+
+// Output:
+// vet: composite literal uses unkeyed fields severity=warning file="example_test.go" line=92
 ```
 
 See the [GoDoc](https://godoc.org/github.com/jjeffery/kv) for more details.
