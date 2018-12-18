@@ -4,6 +4,8 @@ Package kv provides support for working with collections of key/value pairs.
 
 ### Lists, maps, pairs
 
+The types `Message`, `Pair`, `List` and Map all implement the `fmt.Stringer` interface
+and the `encoding.TextMarshaler` interface, and so they can render themselves as text.
 ```go
 // key/value list
 l := kv.List{
@@ -26,33 +28,49 @@ fmt.Println(l, m, p)
 // key1="value 1" key2=2 key3="value 3" key4=4 key5=5
 ```
 
+If you like the simplicity of logging with key value pairs but are not ready to
+move away from the standard library `log` package you can use this package to 
+render your key value pairs.
+  log.Println("this is a log message", kv.List{
+      "key1", "value 1",
+      "key2", 2,
+  })
+
+  // Output:
+  // this is a log message key1="value 1" key2=2
+
 ### Messages, errors, context
 
-A message is some optional free text followed by zero, one or more key value pairs. Examples:
+A message is some optional free text followed by zero or more key/value pairs:
 ```
-message text with key/value pairs key1=value1 key1=value2
+example message with key/value pairs key1=1 key2="second value"
 message text with no key/value pairs
-key=value1 key=value2 key3=value3
+message=without any="free-text"
 ```
 
-Key/values can be stored in the context.
+Messages are easily constructed with message text and/or key/value pairs.
+```go
+// create a message
+msg1 := kv.Msg("first message").With("key1", "value 1")
+fmt.Println(msg1)
+
+// Output:
+// first message key1="value 1"
+```
+
+Key/value pairs can be stored in the context:
 ```go
 ctx := context.Background()
 
 // associate some key/value pairs with the context
 ctx = kv.NewContext(ctx).With("url", "/api/widgets", "method", "get")
 
-// create a message
-msg1 := kv.Msg("first message").With("key1", "value 1")
-
 // create another message with values from the context
-msg1 := kv.Msg("second message).With("key2", "value 2").Ctx(ctx)
+msg2 := kv.Msg("second message").With("key2", "value 2").Ctx(ctx)
 
-fmt.Println(msg1)
 fmt.Println(msg2)
 
 // Output:
-// first message key1="value 1"
 // second message key2="value 2" url="/api/widgets" method=get
 ```
 

@@ -35,7 +35,6 @@ type keyvalsAppender interface {
 type List []interface{}
 
 // Keyvals returns the list cast as []interface{}.
-// It implements the keyvalser interface described in the package summary.
 func (l List) Keyvals() []interface{} {
 	return []interface{}(l)
 }
@@ -117,7 +116,6 @@ func P(key string, value interface{}) Pair {
 }
 
 // Keyvals returns the pair's key and value as a slice of interface{}.
-// It implements the keyvalser interface described in the package summary.
 func (p Pair) Keyvals() []interface{} {
 	return []interface{}{p.Key, p.Value}
 }
@@ -153,9 +151,7 @@ func (p Pair) appendKeyvals(keyvals []interface{}) []interface{} {
 type Map map[string]interface{}
 
 // Keyvals returns the contents of the map as a list of alternating
-// key/value pairs. It implements the keyvalser interface described
-// in the package summary.
-// The key/value pairs are sorted by key.
+// key/value pairs. The key/value pairs are sorted by key.
 func (m Map) Keyvals() []interface{} {
 	keyvals := make([]interface{}, 0, len(m)*2)
 	for k, v := range m {
