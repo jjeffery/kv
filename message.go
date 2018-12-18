@@ -7,6 +7,12 @@ import (
 	"strconv"
 )
 
+var (
+	// LogFunc is called by the Message.Log method to log a message.
+	// By default it uses the Go standard library log package.
+	LogFunc = log.Println
+)
+
 // A Message consists of message text followed by
 // zero or more key/value pairs.
 type Message struct {
@@ -95,9 +101,10 @@ func (msg *Message) UnmarshalText(text []byte) error {
 	return nil
 }
 
-// Log logs the message.
+// Log the message using the LogFunc function. By default this
+// uses the Go standard library log package.
 func (msg *Message) Log() {
-	log.Println(msg)
+	LogFunc(msg)
 }
 
 func (msg *Message) writeToBuffer(buf *bytes.Buffer) {
