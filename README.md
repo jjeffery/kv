@@ -11,16 +11,16 @@ and the `encoding.TextMarshaler` interface, and so they can render themselves as
 l := kv.List{
     "key1", "value 1",
     "key2", 2,
-})
+}
 
 // key/value map
 m := kv.Map{
     "key3": "value 3",
     "key4": 4,
-})
+}
 
 // key/value pair
-p := kv.Pair{key: "key5", value: 5}) // alternatively kv.P("key5", 5)
+p := kv.Pair{key: "key5", value: 5} // alternatively kv.P("key5", 5)
 
 fmt.Println(l, m, p)
 
