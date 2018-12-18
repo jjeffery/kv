@@ -1,7 +1,7 @@
 package kv
 
 import (
-	"io"
+	"errors"
 	"unicode"
 	"unicode/utf8"
 )
@@ -13,6 +13,10 @@ const (
 	tokKey
 	tokQuoted
 	tokQuotedKey
+)
+
+var (
+	errEOF = errors.New("eof")
 )
 
 type lexer struct {
@@ -46,7 +50,7 @@ func (lex *lexer) rewind() {
 func (lex *lexer) readRune() (rune, error) {
 	ch, size := utf8.DecodeRune(lex.input[lex.pos:])
 	if size == 0 {
-		return 0, io.EOF
+		return 0, errEOF
 	}
 	if ch == utf8.RuneError {
 		ch = '?'
