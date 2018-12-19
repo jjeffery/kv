@@ -2,6 +2,7 @@ package kv
 
 import (
 	"bytes"
+	"context"
 	"sort"
 	"strings"
 )
@@ -82,12 +83,20 @@ func (l List) Err(text string) *Error {
 // Wrap wraps the error with the key/value pairs copied
 // from the list, and the optional text.
 func (l List) Wrap(err error, text ...string) *Error {
-	e := &Error{
+	return &Error{
 		Text: strings.Join(text, " "),
 		List: l.clone(0),
 		Err:  err,
 	}
-	return e
+}
+
+// From returns a message with key/value pairs copied
+// from the list and the context.
+func (l List) From(ctx context.Context) *Message {
+	return &Message{
+		List:        l.clone(0),
+		ContextList: fromContext(ctx),
+	}
 }
 
 func (l List) writeToBuffer(buf *bytes.Buffer) {

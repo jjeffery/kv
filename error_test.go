@@ -62,7 +62,7 @@ func TestError(t *testing.T) {
 				ctx := NewContext(context.Background()).With("c", 3, "d", 4)
 				err1 := keyvalserError{"msg", "first", "a", 1, "b", 2, "c", "3"}
 				err2 := Wrap(err1, "second").With("a", 1, "b", "2")
-				return Wrap(err2, "third").With("a", 2).Ctx(ctx)
+				return Wrap(err2, "third").With("a", 2).From(ctx)
 			},
 			want: "third: second: first a=2 a=1 b=2 c=3 d=4",
 		},

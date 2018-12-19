@@ -4,8 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
-	// log "fmt" // sleight of hand so example looks like its using the standard log package
+	log "fmt" // sleight of hand so example looks like its using the standard log package
 
 	"github.com/jjeffery/kv"
 )
@@ -118,7 +117,7 @@ func ExampleContext() {
 	// ... and then later on ...
 
 	// use the values for logging later on
-	log.Println("something happened", kv.Ctx(ctx).With(
+	log.Println("something happened", kv.From(ctx).With(
 		"code", "red",
 	))
 
@@ -136,14 +135,14 @@ func ExampleMsg() {
 	// logging a message key1=1 key2=two
 }
 
-func ExampleMessage_Ctx() {
+func ExampleMessage_From() {
 	ctx := context.Background()
 
 	// create a new context with keyvals attached.
 	ctx = kv.NewContext(ctx).With("method", "GET", "url", "/api/widgets/1")
 
 	// use the values for logging later on
-	log.Println(kv.Msg("something happened").Ctx(ctx))
+	log.Println(kv.Msg("something happened").From(ctx))
 
 	// Output:
 	// something happened method=GET url="/api/widgets/1"
@@ -156,10 +155,39 @@ func ExampleMessage_Msg() {
 	ctx = kv.NewContext(ctx).With("method", "GET", "url", "/api/widgets/1")
 
 	// use the values for logging later on
-	log.Println(kv.Ctx(ctx).Msg("something happened"))
+	log.Println(kv.From(ctx).Msg("something happened"))
 
 	// Output:
 	// something happened method=GET url="/api/widgets/1"
+}
+
+func ExampleMessage_Wrap() {
+	// create a context with key/value pairs
+	ctx := kv.NewContext(context.Background()).With("user", "scott")
+
+	// ... later on there is an error ...
+	err := errors.New("permission denied")
+
+	// wrap the error with context key/value pairs
+	err = kv.From(ctx).Wrap(err)
+
+	log.Println("error:", err)
+
+	// Output:
+	// error: permission denied user=scott
+}
+
+func ExampleMessage_Err() {
+	// create a context with key/value pairs
+	ctx := kv.NewContext(context.Background()).With("user", "tiger")
+
+	// ... later on there is an error ...
+	err := kv.From(ctx).Err("permission denied")
+
+	log.Println("error:", err)
+
+	// Output:
+	// error: permission denied user=tiger
 }
 
 func ExampleMessage_Log() {

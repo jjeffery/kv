@@ -280,7 +280,7 @@ func TestParseMessage(t *testing.T) {
 }
 
 func TestEdgeCases(t *testing.T) {
-	if got, want := Ctx(nil).With(), (Message{}); !msgEqual(got, &want) {
+	if got, want := From(nil).With(), (Message{}); !msgEqual(got, &want) {
 		t.Errorf("got=%v, want=%v", got, want)
 	}
 
@@ -354,6 +354,68 @@ func TestListWrap(t *testing.T) {
 	}
 	for tn, tt := range tests {
 		if got, want := tt.list.Wrap(tt.err, tt.text), tt.e; !errEqual(got, want) {
+			t.Errorf("%d: got=%v, want=%v", tn, got, want)
+		}
+	}
+}
+
+func TestListFrom(t *testing.T) {
+	ctx := context.Background()
+	tests := []struct {
+		list List
+		ctx  context.Context
+		msg  *Message
+	}{
+		{
+			list: List{"a", 1, "b", 2},
+			ctx:  NewContext(ctx).With("c", 3, "d", 4),
+			msg: &Message{
+				List:        List{"a", 1, "b", 2},
+				ContextList: List{"c", 3, "d", 4},
+			},
+		},
+	}
+	for tn, tt := range tests {
+		if got, want := tt.list.From(tt.ctx), tt.msg; !msgEqual(got, want) {
+			t.Errorf("%d: got=%v, want=%v", tn, got, want)
+		}
+	}
+}
+
+func TestMessageWrap(t *testing.T) {
+	err1 := errors.New("test")
+	ctx := NewContext(context.Background()).With("c", 3, "d", 4)
+	tests := []struct {
+		msg  *Message
+		text []string
+		err  error
+		e    *Error
+	}{
+		{
+			msg:  From(ctx).With("a", 1),
+			text: []string{"message"},
+			err:  err1,
+			e: &Error{
+				Text:        "message",
+				List:        List{"a", 1},
+				ContextList: List{"c", 3, "d", 4},
+				Err:         err1,
+			},
+		},
+		{
+			msg:  From(ctx).With("a", 1),
+			text: nil,
+			err:  err1,
+			e: &Error{
+				Text:        "",
+				List:        List{"a", 1},
+				ContextList: List{"c", 3, "d", 4},
+				Err:         err1,
+			},
+		},
+	}
+	for tn, tt := range tests {
+		if got, want := tt.msg.Wrap(tt.err, tt.text...), tt.e; !errEqual(got, want) {
 			t.Errorf("%d: got=%v, want=%v", tn, got, want)
 		}
 	}

@@ -41,7 +41,7 @@ Key/value pairs can be stored in the context:
  ctx = kv.NewContext(ctx).With("url", "/api/widgets", "method", "get")
 
  // create another message with values from the context
- msg2 := kv.Msg("second message").With("key2", "value 2").Ctx(ctx)
+ msg2 := kv.Msg("second message").With("key2", "value 2").From(ctx)
 
  fmt.Println(msg2)
 

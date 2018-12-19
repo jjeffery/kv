@@ -106,9 +106,9 @@ func (e *Error) With(keyvals ...interface{}) *Error {
 	return e
 }
 
-// Ctx returns an error based on e, but with additional key/value
+// From returns an error based on e, but with additional key/value
 // pairs extracted from the context.
-func (e *Error) Ctx(ctx context.Context) *Error {
+func (e *Error) From(ctx context.Context) *Error {
 	e = e.clone()
 	e.ContextList = fromContext(ctx)
 	return e

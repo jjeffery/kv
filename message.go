@@ -5,6 +5,7 @@ import (
 	"context"
 	"log"
 	"strconv"
+	"strings"
 )
 
 var (
@@ -21,8 +22,8 @@ type Message struct {
 	ContextList List   // key value pairs from context
 }
 
-// Ctx returns a message populated with key/values from the context.
-func Ctx(ctx context.Context) *Message {
+// From returns a message populated with key/values from the context.
+func From(ctx context.Context) *Message {
 	return &Message{
 		ContextList: fromContext(ctx),
 	}
@@ -48,8 +49,8 @@ func (msg *Message) clone() *Message {
 	return &m
 }
 
-// Ctx returns a new message based on msg, but populated with key/value pairs from the context.
-func (msg *Message) Ctx(ctx context.Context) *Message {
+// From returns a new message based on msg, but populated with key/value pairs from the context.
+func (msg *Message) From(ctx context.Context) *Message {
 	msg = msg.clone()
 	msg.ContextList = fromContext(ctx)
 	return msg
@@ -68,6 +69,36 @@ func (msg *Message) With(keyvals ...interface{}) *Message {
 	msg = msg.clone()
 	msg.List = msg.List.With(keyvals...)
 	return msg
+}
+
+// Wrap returns an error based on the message that wraps err.
+//
+// This method can be useful when creating an error with
+// key/values from the context. See the example.
+func (msg *Message) Wrap(err error, text ...string) *Error {
+	e := &Error{
+		Text:        msg.Text,
+		List:        msg.List,
+		ContextList: msg.ContextList,
+		Err:         err,
+	}
+	if len(text) > 0 {
+		e.Text = strings.Join(text, " ")
+	}
+	return e
+}
+
+// Err returns an error with the specified text and
+// key/value pairs copied from the message.
+//
+// This method can be useful when creating an error with
+// key/values from the context. See the example.
+func (msg *Message) Err(text string) *Error {
+	return &Error{
+		Text:        text,
+		List:        msg.List,
+		ContextList: msg.ContextList,
+	}
 }
 
 // String returns a string representation of the message in
