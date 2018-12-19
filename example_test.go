@@ -4,56 +4,14 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	log "fmt" // sleight of hand so example looks like its using the standard log package
+	"log"
+	// log "fmt" // sleight of hand so example looks like its using the standard log package
 
 	"github.com/jjeffery/kv"
 )
 
-var id = 42
-
-type Record struct {
-	sku, location, color, pickingCode string
-}
-
-func LookupSomething(id int) (*Record, bool) {
-	return &Record{
-		sku:         "X1FWP",
-		location:    "bin 31",
-		color:       "green",
-		pickingCode: "p1p",
-	}, true
-}
-
-func Example() {
-	log.Println("trace: lookup up something", kv.P("id", id))
-	record, ok := LookupSomething(id)
-	if !ok {
-		log.Println("error: not found", kv.P("id", id))
-		return
-	}
-
-	// log a message with lots of key/value pairs
-	log.Println("found article", kv.List{
-		"sku", record.sku,
-		"location", record.location,
-		"color", record.color,
-		"pickingCode", record.pickingCode,
-	})
-
-	// Log again, this time with a map. The main difference
-	// is that with a map the keys are sorted. With a list the
-	// keys are in the order given.
-	log.Println("found article", kv.Map{
-		"sku":         record.sku,
-		"location":    record.location,
-		"color":       record.color,
-		"pickingCode": record.pickingCode,
-	})
-
-	// Output:
-	// trace: lookup up something id=42
-	// found article sku=X1FWP location="bin 31" color=green pickingCode=p1p
-	// found article color=green location="bin 31" pickingCode=p1p sku=X1FWP
+func init() {
+	kv.LogFunc = func(args ...interface{}) { fmt.Println(args...) }
 }
 
 func ExampleList() {
@@ -102,18 +60,6 @@ func ExamplePair() {
 
 	// Output:
 	// result="the result" count=1
-	// result="the result" count=1
-}
-
-func ExampleP() {
-	result, count := "the result", 1
-
-	fmt.Println(
-		kv.P("result", result),
-		kv.P("count", count),
-	)
-
-	// Output:
 	// result="the result" count=1
 }
 
@@ -216,7 +162,15 @@ func ExampleMessage_Msg() {
 	// something happened method=GET url="/api/widgets/1"
 }
 
-func ExampleError_Error() {
+func ExampleMessage_Log() {
+	// An alternative way to log messages
+	kv.Msg("something happened").With("key1", 1, "key2", "value 2").Log()
+
+	// Output:
+	// something happened key1=1 key2="value 2"
+}
+
+func ExampleError() {
 	file := "testing-file"
 	err1 := errors.New("elf header corrupted")
 	err2 := kv.Wrap(err1, "emit macho dwarf").With("file", file)

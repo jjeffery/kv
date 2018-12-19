@@ -25,11 +25,10 @@ func Err(text string) *Error {
 // with the message text.
 func Wrap(err error, text ...string) *Error {
 	e := &Error{
-		Err: err,
+		Text: strings.Join(text, " "),
+		Err:  err,
 	}
-	if len(text) > 0 {
-		e.Text = text[0]
-	}
+
 	return e
 }
 

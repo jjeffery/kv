@@ -3,6 +3,7 @@ package kv
 import (
 	"bytes"
 	"sort"
+	"strings"
 )
 
 // The keyvalser interface returns a slice of alternating keys
@@ -34,6 +35,12 @@ type keyvalsAppender interface {
 // List is a slice of alternating keys and values.
 type List []interface{}
 
+// With returns a list populated with keyvals as the key/value pairs.
+func With(keyvals ...interface{}) List {
+	keyvals = Flatten(keyvals)
+	return List(keyvals)
+}
+
 // Keyvals returns the list cast as []interface{}.
 func (l List) Keyvals() []interface{} {
 	return []interface{}(l)
@@ -54,6 +61,35 @@ func (l List) MarshalText() (text []byte, err error) {
 	return buf.Bytes(), nil
 }
 
+// Msg returns a message with the given text and a list of
+// key/value pairs copied from the list.
+func (l List) Msg(text string) *Message {
+	return &Message{
+		Text: text,
+		List: l.clone(0),
+	}
+}
+
+// Err returns an error with the given message and a list
+// of key/value pairs copied from the list.
+func (l List) Err(text string) *Error {
+	return &Error{
+		Text: text,
+		List: l.clone(0),
+	}
+}
+
+// Wrap wraps the error with the key/value pairs copied
+// from the list, and the optional text.
+func (l List) Wrap(err error, text ...string) *Error {
+	e := &Error{
+		Text: strings.Join(text, " "),
+		List: l.clone(0),
+		Err:  err,
+	}
+	return e
+}
+
 func (l List) writeToBuffer(buf *bytes.Buffer) {
 	fl := Flatten(l)
 	for i := 0; i < len(fl); i += 2 {
@@ -67,9 +103,18 @@ func (l List) writeToBuffer(buf *bytes.Buffer) {
 // is not modified.
 func (l List) With(keyvals ...interface{}) List {
 	keyvals = Flatten(keyvals)
-	list := make(List, 0, len(l)+len(keyvals))
-	list = append(list, l...)
+	list := l.clone(len(l) + len(keyvals))
 	list = append(list, keyvals...)
+	return list
+}
+
+func (l List) clone(cap int) List {
+	length := len(l)
+	if cap < length {
+		cap = length
+	}
+	list := make(List, 0, cap)
+	list = append(list, l...)
 	return list
 }
 

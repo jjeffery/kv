@@ -43,14 +43,6 @@ func Parse(input []byte) *Message {
 	return msg
 }
 
-// With returns a message populated with keyvals as the list of key/value pairs.
-func With(keyvals ...interface{}) *Message {
-	keyvals = Flatten(keyvals)
-	return &Message{
-		List: keyvals,
-	}
-}
-
 func (msg *Message) clone() *Message {
 	m := *msg
 	return &m

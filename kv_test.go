@@ -1,11 +1,15 @@
 package kv
 
 import (
+	"bytes"
 	"context"
 	"encoding"
+	"errors"
 	"fmt"
 	"reflect"
+	"strings"
 	"testing"
+	"time"
 )
 
 type testKeyvalPairer struct {
@@ -285,6 +289,170 @@ func TestEdgeCases(t *testing.T) {
 	}
 }
 
+func TestListMsg(t *testing.T) {
+	tests := []struct {
+		list List
+		text string
+		msg  *Message
+	}{
+		{
+			list: List{"a", 1, "b", 2},
+			text: "message",
+			msg: &Message{
+				Text: "message",
+				List: List{"a", 1, "b", 2},
+			},
+		},
+	}
+	for tn, tt := range tests {
+		if got, want := tt.list.Msg(tt.text), tt.msg; !msgEqual(got, want) {
+			t.Errorf("%d: got=%v, want=%v", tn, got, want)
+		}
+	}
+}
+
+func TestListErr(t *testing.T) {
+	tests := []struct {
+		list List
+		text string
+		err  *Error
+	}{
+		{
+			list: List{"a", 1, "b", 2},
+			text: "message",
+			err: &Error{
+				Text: "message",
+				List: List{"a", 1, "b", 2},
+			},
+		},
+	}
+	for tn, tt := range tests {
+		if got, want := tt.list.Err(tt.text), tt.err; !errEqual(got, want) {
+			t.Errorf("%d: got=%v, want=%v", tn, got, want)
+		}
+	}
+}
+
+func TestListWrap(t *testing.T) {
+	err1 := errors.New("test")
+	tests := []struct {
+		list List
+		text string
+		err  error
+		e    *Error
+	}{
+		{
+			list: List{"a", 1, "b", 2},
+			text: "message",
+			err:  err1,
+			e: &Error{
+				Text: "message",
+				List: List{"a", 1, "b", 2},
+				Err:  err1,
+			},
+		},
+	}
+	for tn, tt := range tests {
+		if got, want := tt.list.Wrap(tt.err, tt.text), tt.e; !errEqual(got, want) {
+			t.Errorf("%d: got=%v, want=%v", tn, got, want)
+		}
+	}
+}
+
+func TestMessageLog(t *testing.T) {
+	prevLogFunc := LogFunc
+	defer func() {
+		LogFunc = prevLogFunc
+	}()
+
+	var output string
+	LogFunc = func(args ...interface{}) {
+		output = strings.TrimSpace(fmt.Sprintln(args...))
+	}
+
+	tests := []struct {
+		msg  *Message
+		want string
+	}{
+		{
+			msg: &Message{
+				Text:        "message",
+				List:        List{"a", 1, "b", 2},
+				ContextList: List{"c", 3},
+			},
+			want: "message a=1 b=2 c=3",
+		},
+	}
+	for tn, tt := range tests {
+		tt.msg.Log()
+		if got, want := output, tt.want; got != want {
+			t.Errorf("%d: got=%v, want=%v", tn, got, want)
+		}
+	}
+}
+
+func TestMessageWriteToBuffer(t *testing.T) {
+	tests := []struct {
+		start string
+		msg   *Message
+		want  string
+	}{
+		{
+			msg:  nil,
+			want: "",
+		},
+		{
+			msg:  &Message{},
+			want: "",
+		},
+		{
+			start: "xx",
+			msg:   &Message{Text: "message"},
+			want:  "xx message",
+		},
+	}
+	for tn, tt := range tests {
+		var buf bytes.Buffer
+		buf.WriteString(tt.start)
+		tt.msg.writeToBuffer(&buf)
+		if got, want := buf.String(), tt.want; got != want {
+			t.Errorf("%d: got=%v, want=%v", tn, got, want)
+		}
+	}
+}
+
+func TestContext(t *testing.T) {
+	ctx := context.Background()
+	ctx, cancel1 := context.WithTimeout(ctx, time.Minute)
+	defer cancel1()
+	deadline, _ := ctx.Deadline()
+	ctx, cancel2 := context.WithCancel(ctx)
+	defer cancel2()
+	ctx = context.WithValue(ctx, "key", 99)
+
+	c := NewContext(ctx)
+	d, _ := c.Deadline()
+	if got, want := d, deadline; !got.Equal(want) {
+		t.Fatalf("got=%v, want=%v", got, want)
+	}
+
+	if got, want := c.Done(), ctx.Done(); got != want {
+		t.Fatalf("got=%v, want=%v", got, want)
+	}
+
+	cancel2()
+
+	if got, want := c.Err(), ctx.Err(); got != want {
+		t.Fatalf("got=%v, want=%v", got, want)
+	}
+
+	v1 := c.Value("key").(int)
+	v2 := ctx.Value("key").(int)
+	if got, want := v1, v2; got != want {
+		t.Fatalf("got=%v, want=%v", got, want)
+	}
+}
+
 func msgEqual(m1, m2 *Message) bool {
 	if m1 == nil && m2 == nil {
 		return true
@@ -302,6 +470,32 @@ func msgEqual(m1, m2 *Message) bool {
 	}
 	if len(m1.ContextList) > 0 || len(m2.ContextList) > 0 {
 		if !reflect.DeepEqual(m1.ContextList, m2.ContextList) {
+			return false
+		}
+	}
+	return true
+}
+
+func errEqual(e1, e2 *Error) bool {
+	if e1 == nil && e2 == nil {
+		return true
+	}
+	if e1 == nil || e2 == nil {
+		return false
+	}
+	if e1.Text != e2.Text {
+		return false
+	}
+	if e1.Err != e2.Err {
+		return false
+	}
+	if len(e1.List) > 0 || len(e2.List) > 0 {
+		if !reflect.DeepEqual(e1.List, e2.List) {
+			return false
+		}
+	}
+	if len(e1.ContextList) > 0 || len(e2.ContextList) > 0 {
+		if !reflect.DeepEqual(e1.ContextList, e2.ContextList) {
 			return false
 		}
 	}
