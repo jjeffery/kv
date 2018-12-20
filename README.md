@@ -1,6 +1,6 @@
 # kv [![GoDoc](https://godoc.org/github.com/jjeffery/kv?status.svg)](https://godoc.org/github.com/jjeffery/kv) [![License](http://img.shields.io/badge/license-MIT-green.svg?style=flat)](https://raw.githubusercontent.com/jjeffery/kv/master/LICENSE.md) [![Build Status](https://travis-ci.org/jjeffery/kv.svg?branch=master)](https://travis-ci.org/jjeffery/kv) [![Coverage Status](https://coveralls.io/repos/github/jjeffery/kv/badge.svg?branch=master)](https://coveralls.io/github/jjeffery/kv?branch=master)
 
-Package kv provides support for working with collections of key/value pairs.
+Package kv provides support for working with collections of key/value pairs. The package provides types for a pair, list and map of key/value pairs. It also provides support for easily creating messages and errors with associated key/value pairs.
 
 ### Lists, maps, pairs
 
@@ -50,7 +50,7 @@ message text with no key/value pairs
 message=without any="free-text"
 ```
 
-Messages are easily constructed with message text and/or key/value pairs.
+Messages are easily constructed with text and/or key/value pairs.
 ```go
 // create a message
 msg1 := kv.Msg("first message").With("key1", "value 1")
@@ -68,7 +68,7 @@ ctx := context.Background()
 ctx = kv.NewContext(ctx).With("url", "/api/widgets", "method", "get")
 
 // create another message with values from the context
-msg2 := kv.Msg("second message").With("key2", "value 2").From(ctx)
+msg2 := kv.From(ctx).Msg("second message").With("key2", "value 2")
 
 fmt.Println(msg2)
 
