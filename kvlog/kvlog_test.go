@@ -2,6 +2,10 @@ package kvlog
 
 import (
 	"bytes"
+	"io/ioutil"
+	"log"
+	"reflect"
+	"strconv"
 	"testing"
 )
 
@@ -9,6 +13,8 @@ func TestWriter(t *testing.T) {
 	tests := []struct {
 		input     string
 		output    string
+		flags     int
+		prefix    string
 		width     int
 		showColor bool
 		verbose   bool
@@ -18,23 +24,28 @@ func TestWriter(t *testing.T) {
 			output: "2099/12/31 12:34:56 this is the message key1=value1\n" +
 				"                    key2=value2 key3=value3\n",
 			width: 60,
+			flags: log.LstdFlags,
 		},
 		{
 			input: "2099/12/31 12:34:56 this is the message key1=value1 key2=value2 key3=value3\n",
 			output: "2099/12/31 12:34:56 this is the message key1=value1 key2=value2\n" +
 				"                    key3=value3\n",
 			width: 70,
+			flags: log.LstdFlags,
 		},
 		{
 			input: "prog [400] 2099/12/31 12:34:56 this is the message key1=value1 key2=value2 key3=value3\n",
 			output: "prog [400] 2099/12/31 12:34:56 this is the message key1=value1\n" +
 				"                               key2=value2 key3=value3\n",
-			width: 70,
+			width:  70,
+			prefix: "prog [400] ",
+			flags:  log.LstdFlags,
 		},
 		{
 			input:  "2099/12/31 12:34:56 this is the message key1=value1 key2=value2 key3=value3\n",
 			output: "2099/12/31 12:34:56 this is the message key1=value1 key2=value2 key3=value3\n",
 			width:  80,
+			flags:  log.LstdFlags,
 		},
 		{
 			input: "this is the message key1=value1 key2=value2 key3=value3\n",
@@ -45,12 +56,14 @@ func TestWriter(t *testing.T) {
 		{
 			input:  "12:34:56 error: this is the message key1=value1 key2=value2: file not found\n",
 			output: "12:34:56 error: this is the message key1=value1 key2=value2: file not found\n",
+			flags:  log.Ltime,
 		},
 		{
 			input: "12:34:56 error: this is the message key1=value1 key2=value2: file not found\n",
 			output: "12:34:56 error: this is the message key1=value1 key2=value2: file not\n" +
 				"         found\n",
 			width: 70,
+			flags: log.Ltime,
 		},
 		{
 			input: "12:34:56 error: this is a very long message that will wrap over the line key1=value1 key2=value2: file not found\n",
@@ -58,6 +71,7 @@ func TestWriter(t *testing.T) {
 				"         over the line key1=value1 key2=value2: file not\n" +
 				"         found\n",
 			width: 60,
+			flags: log.Ltime,
 		},
 		{
 			input: `11:17:29 select "id","version","created_at","updated_at","status","message","nick_name","user_id",` +
@@ -71,81 +85,257 @@ func TestWriter(t *testing.T) {
 				`         "customer_last_name","customer_middle_names","customer_mobile_number",` + "\n" +
 				`         "customer_date_of_birth" from customers where id > $1 order by id limit $2 [14 10]` + "\n",
 			width: 100,
+			flags: log.Ltime,
 		},
 		{ // colors
-			input:     "11:17:39 prefix: error: this is an error message\n",
-			output:    "11:17:39 prefix: \x1b[0;31merror:\x1b[0m this is an error message\n",
+			input:     "prefix: 11:17:39 error: this is an error message\n",
+			output:    "prefix: 11:17:39 \x1b[0;31merror: \x1b[0mthis is an error message\n",
 			width:     120,
 			showColor: true,
+			prefix:    "prefix: ",
+			flags:     log.Ltime,
 		},
 		{ // colors
-			input:     "11:17:39 prefix: Error: this is an error message\n",
-			output:    "11:17:39 prefix: \x1b[0;31mError:\x1b[0m this is an error message\n",
+			input:     "11:17:39  Error: this is an error message\n",
+			output:    "11:17:39 \x1b[0;31merror: \x1b[0mthis is an error message\n",
 			width:     120,
 			showColor: true,
+			flags:     log.Ltime,
+		},
+		{ // colors
+			input:     "11:17:39  custom: this is a custom level\n",
+			output:    "11:17:39 \x1b[0;32;1mcustom: \x1b[0mthis is a custom level\n",
+			width:     120,
+			showColor: true,
+			flags:     log.Ltime,
 		},
 		{ // suppress debug
 			input:  "12:34:56 debug: should be suppressed",
 			output: "",
+			flags:  log.Ltime,
 		},
 		{ // suppress trace
 			input:  "12:34:56 trace: should be suppressed",
 			output: "",
+			flags:  log.Ltime,
 		},
 		{ // verbose shows debug
 			input:   "12:34:56 debug: should be displayed",
 			output:  "12:34:56 debug: should be displayed\n",
 			verbose: true,
+			flags:   log.Ltime | log.LUTC,
 		},
 		{ // verbose shows trace
 			input:   "12:34:56 trace: should be displayed",
 			output:  "12:34:56 trace: should be displayed\n",
 			verbose: true,
+			flags:   log.Ltime,
+		},
+		{ // trailing white space
+			input:   "12:34:56 trailing white space   ",
+			output:  "12:34:56 trailing white space\n",
+			verbose: true,
+			flags:   log.Ltime,
+		},
+		{ // file format
+			input:     "12:34:56 file.go:123 message",
+			output:    "12:34:56 \x1b[0;90mfile.go:123: \x1b[0mmessage\n",
+			verbose:   true,
+			flags:     log.Ltime | log.Lshortfile,
+			showColor: true,
 		},
 	}
 
 	for tn, tt := range tests {
 		var buf bytes.Buffer
-		writer := NewWriter(&buf)
-		if tt.showColor {
-			writer.colorOutput = true
+		output := NewOutput(&buf)
+		if !tt.verbose {
+			output.Suppress("trace", "debug")
+		}
+		output.SetLevel("custom", "32;1")
+		printer := &terminalPrinter{
+			w:       &buf,
+			nocolor: !tt.showColor,
 		}
 		if tt.width > 0 {
-			writer.Width = func() int { return tt.width }
+			printer.width = func() int { return tt.width }
+		} else {
+			printer.width = func() int { return 999999 }
 		}
-		writer.Verbose = tt.verbose
+		output.printer = printer
+		logger := log.New(ioutil.Discard, tt.prefix, tt.flags)
+		writer := newLogWriter(output, logger)
 		writer.Write([]byte(tt.input))
-		output := buf.String()
-		if got, want := output, tt.output; got != want {
+		str := buf.String()
+		if got, want := str, tt.output; got != want {
 			t.Errorf("%d:\n got=%q\nwant=%q", tn, got, want)
 		}
 	}
-
 }
 
-func TestNoColor(t *testing.T) {
-	w1 := &dummyWriter{n: 1}
-	w2 := &dummyWriter{n: 2}
-	w := &Writer{
-		colorOutput: true,
-		origOut:     w1,
-		Out:         w2,
+type testHandler struct {
+	handles func(prefix, level string) bool
+	handle  func(*Message)
+}
+
+func (th *testHandler) Handles(prefix, level string) bool {
+	if th.handles != nil {
+		return th.handles(prefix, level)
 	}
-	w = w.NoColor()
-	if got, want := w.colorOutput, false; got != want {
-		t.Errorf("got=%v, want=%v", got, want)
-	}
-	if got, want := w.Out, w1; got != want {
-		t.Errorf("got=%v, want=%v", got, want)
+	return true
+}
+
+func (th *testHandler) Handle(msg *Message) {
+	if th.handle != nil {
+		th.handle(msg)
 	}
 }
 
-type dummyWriter struct {
-	// don't make a struct{}, otherwise all instances
-	// point to the same address
-	n int // does nothing
+func TestOutput(t *testing.T) {
+	tests := []struct {
+		text   string
+		logger *log.Logger
+		entry  *logEntry
+	}{
+		{
+			text:   "message text a=1 b=2",
+			logger: log.New(ioutil.Discard, "", log.LstdFlags),
+			entry: &logEntry{
+				Date: []byte("0000/00/00"),
+				Time: []byte("00:00:00"),
+				Text: []byte("message text"),
+				List: [][]byte{b("a"), b("1"), b("b"), b("2")},
+			},
+		},
+		{
+			text:   "debug: message text a=1 b=2",
+			logger: log.New(ioutil.Discard, "", log.LstdFlags),
+			entry:  nil, // message suppressed
+		},
+		{
+			text:   "warning: message text a=1 b=2",
+			logger: log.New(ioutil.Discard, "", log.LstdFlags),
+			entry: &logEntry{
+				Date:   []byte("0000/00/00"),
+				Time:   []byte("00:00:00"),
+				Level:  "warning",
+				Action: "yellow",
+				Text:   b("message text"),
+				List:   [][]byte{b("a"), b("1"), b("b"), b("2")},
+			},
+		},
+		{
+			text:   "message text a=1 b=2",
+			logger: log.New(ioutil.Discard, "a really long prefix", log.LstdFlags),
+			entry: &logEntry{
+				Prefix: "a really long prefix",
+				Date:   []byte("0000/00/00"),
+				Time:   []byte("00:00:00"),
+				Text:   b("message text"),
+				List:   [][]byte{b("a"), b("1"), b("b"), b("2")},
+			},
+		},
+		{
+			text:   "message text a=1 b=2",
+			logger: log.New(ioutil.Discard, "a really long prefix", log.LstdFlags|log.Lmicroseconds),
+			entry: &logEntry{
+				Prefix: "a really long prefix",
+				Date:   []byte("0000/00/00"),
+				Time:   []byte("00:00:00.000000"),
+				Text:   b("message text"),
+				List:   [][]byte{b("a"), b("1"), b("b"), b("2")},
+			},
+		},
+		{
+			text:   "message text a=1 b=2",
+			logger: log.New(ioutil.Discard, "", log.Llongfile),
+			entry: &logEntry{
+				File: []byte("present"),
+				Text: b("message text"),
+				List: [][]byte{b("a"), b("1"), b("b"), b("2")},
+			},
+		},
+		{
+			text:   "error: message text a=1 b=2",
+			logger: log.New(ioutil.Discard, "", log.Lshortfile),
+			entry: &logEntry{
+				File:   []byte("present"),
+				Level:  "error",
+				Action: "red",
+				Text:   b("message text"),
+				List:   [][]byte{b("a"), b("1"), b("b"), b("2")},
+			},
+		},
+		{
+			text:   "message text a=1 b=2",
+			logger: log.New(ioutil.Discard, "2049-07-08", 0),
+			entry: &logEntry{
+				Prefix: "2049-07-08",
+				Text:   b("message text"),
+				List:   [][]byte{b("a"), b("1"), b("b"), b("2")},
+			},
+		},
+	}
+
+	output := NewOutput(ioutil.Discard)
+	output.Suppress("debug")
+	var entry *logEntry
+	output.entryHandler = func(e *logEntry) {
+		entry = e
+	}
+
+	for tn, tt := range tests {
+		t.Run(strconv.Itoa(tn), func(t *testing.T) {
+			output.SetOutputFor(tt.logger)
+			entry = nil
+			tt.logger.Println(tt.text)
+			if got, want := entry, tt.entry; !entriesEqual(got, want) {
+				t.Errorf("\n got=%+v\nwant=%+v", got, want)
+			}
+		})
+	}
 }
 
-func (dw *dummyWriter) Write(b []byte) (int, error) {
-	return len(b), nil
+func entriesEqual(e1, e2 *logEntry) bool {
+	if e1 == nil && e2 == nil {
+		return true
+	}
+	if e1 == nil || e2 == nil {
+		return false
+	}
+	if string(e1.Prefix) != string(e2.Prefix) ||
+		len(e1.Date) != len(e2.Date) ||
+		len(e1.Time) != len(e2.Time) ||
+		e1.Level != e2.Level ||
+		e1.Action != e2.Action ||
+		string(e1.Text) != string(e2.Text) {
+		return false
+	}
+
+	if len(e1.File) > 0 && len(e2.File) == 0 {
+		return false
+	}
+	if len(e1.File) == 0 && len(e2.File) > 0 {
+		return false
+	}
+
+	if len(e1.List) > 0 || len(e2.List) > 0 {
+		if !reflect.DeepEqual(e1.List, e2.List) {
+			return false
+		}
+	}
+	return true
+}
+
+func b(s string) []byte {
+	return []byte(s)
+}
+
+// String implements the fmt.Stringer interface, and is useful for printing
+// entries in unit tests.
+func (e *logEntry) String() string {
+	var buf bytes.Buffer
+	p := simplePrinter{w: &buf}
+	p.Print(e)
+	return buf.String()
 }

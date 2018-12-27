@@ -1,4 +1,6 @@
-package kv
+// Package logfmt provides utilities for writing key/value pairs
+// in logfmt format.
+package logfmt
 
 import (
 	"bytes"
@@ -27,16 +29,25 @@ var (
 	}
 )
 
-func writeKeyValue(buf *bytes.Buffer, key, value interface{}) {
+// Writer is an interface implemented by both bytes.Buffer and strings.Builder
+type Writer interface {
+	Len() int
+	Write(p []byte) (n int, err error)
+	WriteString(s string) (n int, err error)
+	WriteRune(r rune) (n int, err error)
+}
+
+// WriteKeyValue writes a key/value pair to the writer.
+func WriteKeyValue(buf Writer, key, value interface{}) {
 	if buf.Len() > 0 {
 		buf.WriteRune(' ')
 	}
 	writeKey(buf, key)
 	buf.WriteRune('=')
-	writeValue(buf, value)
+	WriteValue(buf, value)
 }
 
-func writeKey(buf *bytes.Buffer, value interface{}) {
+func writeKey(buf Writer, value interface{}) {
 	defer func() {
 		if r := recover(); r != nil {
 			if buf != nil {
@@ -81,7 +92,7 @@ func writeKey(buf *bytes.Buffer, value interface{}) {
 	}
 }
 
-func writeBytesKey(buf *bytes.Buffer, b []byte) {
+func writeBytesKey(buf Writer, b []byte) {
 	if b == nil {
 		buf.Write(bytesNull)
 		return
@@ -106,7 +117,7 @@ func writeBytesKey(buf *bytes.Buffer, b []byte) {
 	buf.Write(b)
 }
 
-func writeStringKey(buf *bytes.Buffer, s string) {
+func writeStringKey(buf Writer, s string) {
 	if s == "" {
 		buf.Write(bytesEmptyK)
 		return
@@ -125,7 +136,7 @@ func writeStringKey(buf *bytes.Buffer, s string) {
 	}
 }
 
-func writeTextMarshalerKey(buf *bytes.Buffer, t encoding.TextMarshaler) {
+func writeTextMarshalerKey(buf Writer, t encoding.TextMarshaler) {
 	b, err := t.MarshalText()
 	if err != nil {
 		buf.Write(bytesError)
@@ -134,13 +145,8 @@ func writeTextMarshalerKey(buf *bytes.Buffer, t encoding.TextMarshaler) {
 	writeBytesKey(buf, b)
 }
 
-func valueString(value interface{}) string {
-	var buf bytes.Buffer
-	writeValue(&buf, value)
-	return buf.String()
-}
-
-func writeValue(buf *bytes.Buffer, value interface{}) {
+// WriteValue writes the value to the writer.
+func WriteValue(buf Writer, value interface{}) {
 	defer func() {
 		if r := recover(); r != nil {
 			if buf != nil {
@@ -178,14 +184,14 @@ func writeValue(buf *bytes.Buffer, value interface{}) {
 				buf.Write(bytesNull)
 				return
 			}
-			writeValue(buf, rv.Elem().Interface())
+			WriteValue(buf, rv.Elem().Interface())
 			return
 		}
 		writeStringValue(buf, fmt.Sprint(value))
 	}
 }
 
-func writeBytesValue(buf *bytes.Buffer, b []byte) {
+func writeBytesValue(buf Writer, b []byte) {
 	if b == nil {
 		buf.Write(bytesNull)
 		return
@@ -221,7 +227,7 @@ func writeBytesValue(buf *bytes.Buffer, b []byte) {
 	buf.WriteRune('"')
 }
 
-func writeStringValue(buf *bytes.Buffer, s string) {
+func writeStringValue(buf Writer, s string) {
 	if s == "" {
 		buf.Write(bytesEmptyV)
 		return
@@ -253,7 +259,7 @@ func writeStringValue(buf *bytes.Buffer, s string) {
 	buf.WriteRune('"')
 }
 
-func writeTextMarshalerValue(buf *bytes.Buffer, t encoding.TextMarshaler) {
+func writeTextMarshalerValue(buf Writer, t encoding.TextMarshaler) {
 	b, err := t.MarshalText()
 	if err != nil {
 		buf.Write(bytesError)

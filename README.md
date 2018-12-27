@@ -1,96 +1,103 @@
 # kv [![GoDoc](https://godoc.org/github.com/jjeffery/kv?status.svg)](https://godoc.org/github.com/jjeffery/kv) [![License](http://img.shields.io/badge/license-MIT-green.svg?style=flat)](https://raw.githubusercontent.com/jjeffery/kv/master/LICENSE.md) [![Build Status](https://travis-ci.org/jjeffery/kv.svg?branch=master)](https://travis-ci.org/jjeffery/kv) [![Coverage Status](https://coveralls.io/repos/github/jjeffery/kv/badge.svg?branch=master)](https://coveralls.io/github/jjeffery/kv?branch=master)
 
-Package kv provides support for working with collections of key/value pairs. The package provides types for a pair, list and map of key/value pairs. It also provides support for easily creating messages and errors with associated key/value pairs.
+Package kv is Package kv provides support for working with collections of key/value pairs.
 
-### Lists, maps, pairs
+- [Lists](#lists)
+- [Errors](#errors)
+- [Context](#context)
+- [Parse](#parse)
+- [Logging](#logging)
 
-The types `Message`, `Pair`, `List` and Map all implement the `fmt.Stringer` interface
-and the `encoding.TextMarshaler` interface, and so they can render themselves as text.
+## Lists
+
+The `List` type represents a sequence of alternating key/value pairs. Lists
+can render themselves as text in [logfmt](https://brandur.org/logfmt) format, 
+so if you like logging messages with key value pairs but are not ready to move 
+away from the standard library log package you can use something like:
 ```go
-// key/value list
-l := kv.List{
+log.Println("this is a log message", kv.With(
     "key1", "value 1",
     "key2", 2,
-}
-
-// key/value map
-m := kv.Map{
-    "key3": "value 3",
-    "key4": 4,
-}
-
-// key/value pair
-p := kv.Pair{key: "key5", value: 5} // alternatively kv.P("key5", 5)
-
-fmt.Println(l, m, p)
-
-// Output:
-// key1="value 1" key2=2 key3="value 3" key4=4 key5=5
-```
-
-If you like the simplicity of logging with key value pairs but are not ready to
-move away from the standard library `log` package you can use this package to 
-render your key value pairs.
-```go
-log.Println("this is a log message", kv.List{
-    "key1", "value 1",
-    "key2", 2,
-})
+))
 
 // Output:
 // this is a log message key1="value 1" key2=2
 ```
 
-### Messages, errors, context
+The output from the previous example can be easily read by humans, and easily [parsed](#parse)
+by machines. This makes it an excellent format for 
+[structured logging](https://www.thoughtworks.com/radar/techniques/structured-logging).
 
-A message is some optional free text followed by zero or more key/value pairs:
+## Errors
+
+The `Error` type implements the builtin `error` interface and renders its error message as a
+free text message followed by key/value pairs:
 ```
-example message with key/value pairs key1=1 key2="second value"
-message text with no key/value pairs
-message=without any="free-text"
+cannot open file: permission denied file="/etc/passwd" user=alice
 ```
 
-Messages are easily constructed with text and/or key/value pairs.
+Errors are constructed with message text and key/value pairs.
 ```go
-// create a message
-msg1 := kv.Msg("first message").With("key1", "value 1")
-fmt.Println(msg1)
+// create an error
+err := kv.NewError("permission denied").With("user", user)
+log.Println(err)
 
 // Output:
-// first message key1="value 1"
+// permission denied user=alice
 ```
+
+Errors can wrap other errors:
+```go
+err = kv.Wrap(err, "cannot open file").With("file", filename)
+log.Println(err)
+
+// Output:
+// cannot open file: permission denied file="/etc/passwd" user=alice
+```
+
+## Context
 
 Key/value pairs can be stored in the context:
 ```go
 ctx := context.Background()
 
 // associate some key/value pairs with the context
-ctx = kv.NewContext(ctx).With("url", "/api/widgets", "method", "get")
+ctx = kv.From(ctx).With("url", "/api/widgets", "method", "get")
 
-// create another message with values from the context
-msg2 := kv.From(ctx).Msg("second message").With("key2", "value 2")
+// ... later on ...
 
-fmt.Println(msg2)
+log.Println("access denied", kv.From(ctx).With("file", filename))
 
 // Output:
-// second message key2="value 2" url="/api/widgets" method=get
+// access denied file="/etc/passwd" url="/api/widgets" method=get
 ```
 
-Errors are easily constructed with key/value pairs:
+## Parse
+
+One of the key points of structured logging is that logs are machine
+readable. The `Parse` function provides an easy way to read messages.
 ```go
-// Create a new error
-err := kv.Err("composite literal uses unkeyed fields").With("file", filename, "line", lineno)
-fmt.Println(err)
+// read one line
+line := []byte(`cannot open file: access denied file="/etc/passwd" user=alice`)
+
+ text, list := kv.Parse(line)
+ log.Println("text:", string(text))
+ log.Println("list:", list)
 
 // Output:
-// an error has occurred file="example_test.go" line=92
+// text: cannot open file: access denied
+// list: file="/etc/passwd" user=alice
+```
 
-// Wrap an existing error
-err = kv.Wrap(err, "vet").With("severity", severity)
-fmt.Println(err)
+## Logging
 
-// Output:
-// vet: composite literal uses unkeyed fields severity=warning file="example_test.go" line=92
+The `kvlog` subdirectory contains a package that works well with the `log` package
+in the Go standard library. Its usage is as simple as:
+```go
+func main() {
+    kvlog.Attach() // attach to the standard logger
+    log.Println("program started", kv.With("args", os.Args))
+}
 ```
 
 See the [GoDoc](https://godoc.org/github.com/jjeffery/kv) for more details.

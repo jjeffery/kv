@@ -1,40 +1,49 @@
 package kv
 
 import (
-	"bytes"
 	"context"
 	"strings"
+
+	"github.com/jjeffery/kv/internal/pool"
 )
 
-// Error implements the builtin error interface.
-type Error struct {
-	Text        string
-	List        List
-	ContextList List
-	Err         error
+// Error implements the builtin error interface, and provides
+// an additional method for attaching key/value pairs.
+type Error interface {
+	error
+
+	// With returns a new error based on this error
+	// with the key/value pairs attached.
+	With(keyvals ...interface{}) Error
 }
 
-// Err returns an error that formats as the given text.
-func Err(text string) *Error {
-	return &Error{
-		Text: text,
-	}
+type errorT struct {
+	text    string
+	list    List
+	ctxlist List
+	err     error
+}
+
+var _ Error = &errorT{}
+
+// NewError returns an error that formats as the given text.
+func NewError(text string) Error {
+	return newError(nil, nil, text)
 }
 
 // Wrap returns an error that wraps err, optionally annotating
 // with the message text.
-func Wrap(err error, text ...string) *Error {
-	e := &Error{
-		Text: strings.Join(text, " "),
-		Err:  err,
-	}
-
-	return e
+func Wrap(err error, text ...string) Error {
+	return causer(newError(nil, err, text...))
 }
 
-func (e *Error) clone() *Error {
-	e2 := *e
-	return &e2
+func newError(ctx context.Context, err error, text ...string) *errorT {
+	e := &errorT{
+		text: strings.Join(text, " "),
+		err:  err,
+	}
+	e.ctxlist = append(e.ctxlist, fromContext(ctx)...)
+	return e
 }
 
 // Error implements the error interface.
@@ -42,74 +51,89 @@ func (e *Error) clone() *Error {
 // The string returned prints the error text of this error
 // any any wrapped errors, each separated by a colon and a space (": ").
 // After the error message (or messages) comes the key/value pairs.
-func (e *Error) Error() string {
-	var texts []string
-	var list List
-	var ctxList List
-
-	addError := func(e *Error) {
-		if e.Text != "" {
-			texts = append(texts, e.Text)
-		}
-		list = list.With(e.List...)
-		ctxList = ctxList.With(e.ContextList...)
-	}
-
-	addError(e)
-
-	for err := e.Err; err != nil; {
-		if e2, ok := err.(*Error); ok {
-			addError(e2)
-			err = e2.Err
-			continue
-		}
-		if keyvals, ok := err.(keyvalser); ok {
-			kvlist := Flatten(keyvals.Keyvals())
-			for i := 0; i < len(kvlist); i += 2 {
-				key := kvlist[i].(string)
-				val := kvlist[i+1]
-				if strings.EqualFold(key, "msg") || strings.EqualFold(key, "message") {
-					texts = append(texts, valueString(val))
-				} else {
-					list = append(list, key, val)
+// The resulting string can be parsed with the Parse function.
+func (e *errorT) Error() string {
+	var (
+		text     = strings.TrimSpace(e.text)
+		prevText []byte
+		prevList List
+	)
+	if e.err != nil {
+		input := []byte(e.err.Error())
+		prevText, prevList = Parse(input)
+		if len(prevText) == 0 && len(prevList) > 0 {
+			// The previous message consists only of key/value
+			// pairs. Search for a key indicating the message.
+			i := 0
+			newLen := len(prevList)
+			for ; i < len(prevList); i += 2 {
+				key, _ := prevList[i].(string)
+				if key == "msg" {
+					if value, ok := prevList[i+1].(string); ok {
+						prevText = []byte(value)
+						newLen -= 2
+						break
+					}
 				}
 			}
-			err = nil
-			continue
+			for ; i < len(prevList)-2; i += 2 {
+				prevList[i] = prevList[i+2]
+				prevList[i+1] = prevList[i+3]
+			}
+			prevList = prevList[:newLen]
 		}
-		if text := err.Error(); text != "" {
-			texts = append(texts, text)
-		}
-		err = nil
 	}
 
-	list = list.With(ctxList...).dedup()
-	text := strings.TrimSpace(strings.Join(texts, ": "))
-	var buf bytes.Buffer
-	buf.WriteString(text)
-	list.writeToBuffer(&buf)
+	buf := pool.AllocBuffer()
+	defer pool.ReleaseBuffer(buf)
+
+	if len(text) > 0 {
+		buf.WriteString(text)
+		if len(prevText) > 0 {
+			buf.WriteString(": ")
+		}
+	}
+	buf.Write(prevText)
+
+	list := dedup(e.list, prevList, e.ctxlist)
+	list.writeToBuffer(buf)
+
 	return buf.String()
 }
 
+func (e *errorT) With(keyvals ...interface{}) Error {
+	return causer(&errorT{
+		text:    e.text,
+		list:    e.list.With(keyvals...),
+		ctxlist: e.ctxlist,
+		err:     e.err,
+	})
+}
+
 // Unwrap implements the Wrapper interface.
-//
-// See https://go.googlesource.com/proposal/+/master/design/go2draft-error-inspection.md
-func (e *Error) Unwrap() error {
-	return e.Err
+// See golang.org/x/exp/errors.
+func (e *errorT) Unwrap() error {
+	return e.err
 }
 
-// With returns an error based on e, but with additional key/value
-// pairs associated.
-func (e *Error) With(keyvals ...interface{}) *Error {
-	e = e.clone()
-	e.List = e.List.With(keyvals...)
-	return e
+// causerT implements the causer interface.
+// See github.com/pkg/errors.
+type causerT struct {
+	*errorT
 }
 
-// From returns an error based on e, but with additional key/value
-// pairs extracted from the context.
-func (e *Error) From(ctx context.Context) *Error {
-	e = e.clone()
-	e.ContextList = fromContext(ctx)
-	return e
+// Cause implements the causer interface.
+func (e *causerT) Cause() error {
+	return e.errorT.err
+}
+
+// causer detects whether e wraps another error, and if so
+// returns an Error that also implements the Causer interface.
+func causer(e *errorT) Error {
+	if e.err == nil {
+		return e
+	}
+	return &causerT{
+		errorT: e,
+	}
 }

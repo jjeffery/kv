@@ -5,11 +5,10 @@ go:
 
 install:
   - go get golang.org/x/tools/cmd/cover
-  - go get golang.org/x/crypto/ssh/terminal
-  - go get github.com/mattn/go-colorable
   - go get github.com/mattn/goveralls
+  - go get golang.org/x/sys/windows golang.org/x/sys/unix
 
 script:
-  - go test -race
+  - go test -race ./...
   - go test -v ./... -covermode=count -coverprofile=coverage.out
   - $GOPATH/bin/goveralls -coverprofile=coverage.out -service=travis-ci

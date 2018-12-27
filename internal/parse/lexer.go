@@ -1,4 +1,4 @@
-package kv
+package parse
 
 import (
 	"errors"
@@ -27,24 +27,16 @@ type lexer struct {
 	token int    // current token
 }
 
-func newLexer(input []byte) *lexer {
-	lex := &lexer{
-		input: input,
-	}
-	lex.next()
-	return lex
-}
-
-func (lex *lexer) lexeme() []byte {
-	return lex.input[lex.start:lex.end]
-}
-
 func (lex *lexer) rewind() {
 	lex.start = 0
 	lex.end = 0
 	lex.pos = 0
 	lex.token = 0
 	lex.next()
+}
+
+func (lex *lexer) lexeme() []byte {
+	return lex.input[lex.start:lex.end]
 }
 
 func (lex *lexer) readRune() (rune, error) {
