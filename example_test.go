@@ -16,7 +16,7 @@ func ExampleContext() {
 
 	// ... later on log a message ...
 
-	log.Printf("permission denied %v", kv.From(ctx).With("user", "alice"))
+	log.Println("permission denied", kv.From(ctx).With("user", "alice"))
 
 	// Output:
 	// permission denied user=alice method=get url="/api/widgets"
