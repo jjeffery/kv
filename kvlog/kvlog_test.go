@@ -148,7 +148,7 @@ func TestWriter(t *testing.T) {
 
 	for tn, tt := range tests {
 		var buf bytes.Buffer
-		output := NewOutput(&buf)
+		output := NewWriter(&buf)
 		if !tt.verbose {
 			output.Suppress("trace", "debug")
 		}
@@ -219,7 +219,7 @@ func TestOutput(t *testing.T) {
 				Date:   []byte("0000/00/00"),
 				Time:   []byte("00:00:00"),
 				Level:  "warning",
-				Action: "yellow",
+				Effect: "yellow",
 				Text:   b("message text"),
 				List:   [][]byte{b("a"), b("1"), b("b"), b("2")},
 			},
@@ -261,7 +261,7 @@ func TestOutput(t *testing.T) {
 			entry: &logEntry{
 				File:   []byte("present"),
 				Level:  "error",
-				Action: "red",
+				Effect: "red",
 				Text:   b("message text"),
 				List:   [][]byte{b("a"), b("1"), b("b"), b("2")},
 			},
@@ -277,7 +277,7 @@ func TestOutput(t *testing.T) {
 		},
 	}
 
-	output := NewOutput(ioutil.Discard)
+	output := NewWriter(ioutil.Discard)
 	output.Suppress("debug")
 	var entry *logEntry
 	output.entryHandler = func(e *logEntry) {
@@ -286,7 +286,7 @@ func TestOutput(t *testing.T) {
 
 	for tn, tt := range tests {
 		t.Run(strconv.Itoa(tn), func(t *testing.T) {
-			output.SetOutputFor(tt.logger)
+			output.Attach(tt.logger)
 			entry = nil
 			tt.logger.Println(tt.text)
 			if got, want := entry, tt.entry; !entriesEqual(got, want) {
@@ -307,7 +307,7 @@ func entriesEqual(e1, e2 *logEntry) bool {
 		len(e1.Date) != len(e2.Date) ||
 		len(e1.Time) != len(e2.Time) ||
 		e1.Level != e2.Level ||
-		e1.Action != e2.Action ||
+		e1.Effect != e2.Effect ||
 		string(e1.Text) != string(e2.Text) {
 		return false
 	}

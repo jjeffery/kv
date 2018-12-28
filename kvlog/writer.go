@@ -16,7 +16,8 @@ import (
 
 var (
 	// Levels is the default configuration for interpreting levels at the
-	// beginning of the message text.
+	// beginning of the message text. A level is mapped to an effect, which
+	// can be a color, "hide" or "none".
 	Levels = map[string]string{
 		"trace":   "none",
 		"debug":   "none",
@@ -27,7 +28,9 @@ var (
 		"fatal":   "red",
 	}
 
-	std = NewOutput(os.Stderr)
+	// Std is the 'standard' writer, which can be attached to the
+	// 'standard' logger using the Attach() function.
+	Std = NewWriter(os.Stderr)
 )
 
 // logEntry is a structured representation of the text emitted by a standard library logger.
@@ -42,7 +45,7 @@ type logEntry struct {
 	Time      []byte    // Time from the logger, format HH:MM:SS[.999999]
 	File      []byte    // File name and line number from the logger
 	Level     string    // Message level (eg "debug")
-	Action    string    // Action associated with level
+	Effect    string    // Effect associated with level
 	Text      []byte    // Message text
 	List      [][]byte  // Key/value pairs
 }
@@ -77,14 +80,14 @@ type Handler interface {
 type levelInfo struct {
 	levelb   []byte
 	levelstr string
-	action   string
+	effect   string
 }
 
-// Output acts as the output for one or more log.Loggers. It parses each message
+// Writer acts as the output for one or more log.Loggers. It parses each message
 // written by the logger, and passes the information to any handlers registered with
 // the output. The message is then formatted and printed to the output writer. If the
 // output writer is a terminal, it formats the message for improved readability.
-type Output struct {
+type Writer struct {
 	mutex        sync.Mutex        // controls exclusive access
 	printer      printer           // used for printing to the output writer
 	suppress     [][]byte          // levels that should be suppressed
@@ -94,10 +97,10 @@ type Output struct {
 	entryHandler func(*logEntry)   // for testing
 }
 
-// NewOutput creates an output that logs messages to out, which is
-// typically either os.Stdout or os.Stderr.
-func NewOutput(out io.Writer) *Output {
-	w := &Output{
+// NewWriter creates writer that logs messages to out. If the output writer is a terminal
+// device, the output will be formatted for improved readability.
+func NewWriter(out io.Writer) *Writer {
+	w := &Writer{
 		printer: newPrinter(out),
 	}
 	return w
@@ -105,13 +108,18 @@ func NewOutput(out io.Writer) *Output {
 
 // Attach configures the 'standard' logger to log via this package.
 // Log output will go to standard error. Use the SetOutput method to override.
-func Attach() *Output {
-	std.SetOutputFor(nil)
-	return std
+func Attach() *Writer {
+	Std.Attach(nil)
+	return Std
+}
+
+// SetOutput sets the output destination for log messages.
+func SetOutput(writer io.Writer) {
+	Std.SetOutput(writer)
 }
 
 // Levels returns a list of levels and their associated actions.
-func (w *Output) Levels() map[string]string {
+func (w *Writer) Levels() map[string]string {
 	w.mutex.Lock()
 	defer w.mutex.Unlock()
 
@@ -119,56 +127,56 @@ func (w *Output) Levels() map[string]string {
 		w.setLevels(Levels)
 	}
 	levels := make(map[string]string)
-	for level, action := range w.levels {
-		levels[level] = action
+	for level, effect := range w.levels {
+		levels[level] = effect
 	}
 
 	return levels
 }
 
 // SetLevels sets a list of levels and their associated actions.
-// It replaces any existing level/action mapping. If an unknown
-// action is supplied, a message is logged.
-func (w *Output) SetLevels(levels map[string]string) {
+// It replaces any existing level/effect mapping. If an unknown
+// effect is supplied, a message is logged.
+func (w *Writer) SetLevels(levels map[string]string) {
 	w.mutex.Lock()
 	w.setLevels(levels)
 	w.mutex.Unlock()
 }
 
 // SetLevel sets an individual level and its associated display effect.
-func (w *Output) SetLevel(level string, effect string) {
+func (w *Writer) SetLevel(level string, effect string) {
 	levels := w.Levels()
 	levels[level] = effect
 	w.SetLevels(levels)
 }
 
-func (w *Output) setLevels(levels map[string]string) {
+func (w *Writer) setLevels(levels map[string]string) {
 	w.suppress = nil
 	w.display = nil
 	w.levels = make(map[string]string)
 
-	for level, action := range levels {
+	for level, effect := range levels {
 		level := strings.TrimSpace(level)
 		level = strings.TrimRight(level, ": ")
 		levelb := []byte(level)
-		w.levels[level] = action
-		if action == "hide" || action == "suppress" || action == "ignore" {
+		w.levels[level] = effect
+		if effect == "hide" || effect == "suppress" || effect == "ignore" {
 			w.suppress = append(w.suppress, levelb)
 			continue
 		}
 
-		// TODO(jpj): check for known action
+		// TODO(jpj): check for known effect
 
 		w.display = append(w.display, &levelInfo{
 			levelb:   levelb,
 			levelstr: level,
-			action:   action,
+			effect:   effect,
 		})
 	}
 }
 
 // Suppress instructs the writer to suppress any message with the specified level.
-func (w *Output) Suppress(levels ...string) {
+func (w *Writer) Suppress(levels ...string) {
 	p := w.Levels()
 	for _, level := range levels {
 		p[level] = "hide"
@@ -182,7 +190,7 @@ func (w *Output) Suppress(levels ...string) {
 //
 // This function is useful for registering handlers that send log
 // information to external sources.
-func (w *Output) Handle(h Handler) {
+func (w *Writer) Handle(h Handler) {
 	w.mutex.Lock()
 	defer w.mutex.Unlock()
 
@@ -191,22 +199,34 @@ func (w *Output) Handle(h Handler) {
 	}
 }
 
-// SetOutputFor sets this writer as the output destination
-// for the specified logger. Set logger to nil to specify
-// the log package 'standard' logger.
+// Attach sets this writer as the output destination
+// for the specified logger. If the logger is not specified,
+// then this writer attaches to the log package 'standard' logger.
 //
 // This method calls SetOutput for the specified logger
 // (or the standard logger) to set its output writer.
-func (w *Output) SetOutputFor(logger *log.Logger) {
-	lw := newLogWriter(w, logger)
-	if logger == nil {
-		log.SetOutput(lw)
-	} else {
-		logger.SetOutput(lw)
+func (w *Writer) Attach(logger ...*log.Logger) {
+	if len(logger) == 0 {
+		logger = []*log.Logger{nil}
+	}
+	for _, l := range logger {
+		lw := newLogWriter(w, l)
+		if l == nil {
+			log.SetOutput(lw)
+		} else {
+			l.SetOutput(lw)
+		}
 	}
 }
 
-func (w *Output) shouldSuppress(msg []byte) bool {
+// SetOutput sets the output destination for log messages.
+func (w *Writer) SetOutput(out io.Writer) {
+	w.mutex.Lock()
+	w.printer = newPrinter(out)
+	w.mutex.Unlock()
+}
+
+func (w *Writer) shouldSuppress(msg []byte) bool {
 	for _, levelb := range w.suppress {
 		if bytes.HasPrefix(msg, levelb) {
 			if colonRE.Match(msg[len(levelb):]) {
@@ -217,7 +237,7 @@ func (w *Output) shouldSuppress(msg []byte) bool {
 	return false
 }
 
-func (w *Output) getLevel(msg []byte) (level string, action string, skip int) {
+func (w *Writer) getLevel(msg []byte) (level string, effect string, skip int) {
 	for _, levelInfo := range w.display {
 		if len(msg) < len(levelInfo.levelb)+1 {
 			continue
@@ -227,16 +247,16 @@ func (w *Output) getLevel(msg []byte) (level string, action string, skip int) {
 			suffix := colonRE.Find(msg[len(levelInfo.levelb):])
 			if suffix != nil {
 				level = levelInfo.levelstr
-				action = levelInfo.action
+				effect = levelInfo.effect
 				skip = len(levelInfo.levelb) + len(suffix)
 				break
 			}
 		}
 	}
-	return level, action, skip
+	return level, effect, skip
 }
 
-func (w *Output) handler(entry *logEntry) {
+func (w *Writer) handler(entry *logEntry) {
 	if w.entryHandler != nil {
 		w.entryHandler(entry)
 	}
@@ -276,7 +296,7 @@ type logWriter struct {
 	dateRE  *regexp.Regexp // regexp for extracting date
 	timeRE  *regexp.Regexp // regexp for extracting time
 	fileRE  *regexp.Regexp // regexp for extracting file (???:0 D:/go/src/github.com/jjeffery/kv/kv.go:123)
-	output  *Output
+	output  *Writer
 	logger  *log.Logger
 	changed bool
 }
@@ -288,7 +308,7 @@ var (
 	colonRE = regexp.MustCompile(`^\s*:\s*`)
 )
 
-func newLogWriter(output *Output, logger *log.Logger) *logWriter {
+func newLogWriter(output *Writer, logger *log.Logger) *logWriter {
 	w := &logWriter{
 		output: output,
 		logger: logger,
@@ -399,7 +419,7 @@ func (w *logWriter) Write(p []byte) (n int, err error) {
 		w.output.setLevels(Levels)
 	}
 	if !w.output.shouldSuppress(p) {
-		level, action, skip := w.output.getLevel(p)
+		level, effect, skip := w.output.getLevel(p)
 		p = p[skip:]
 		msg := parse.Bytes(p)
 		ent := logEntry{
@@ -409,7 +429,7 @@ func (w *logWriter) Write(p []byte) (n int, err error) {
 			Time:      logtime,
 			File:      file,
 			Level:     level,
-			Action:    action,
+			Effect:    effect,
 			Text:      msg.Text,
 			List:      msg.List,
 		}
@@ -421,11 +441,11 @@ func (w *logWriter) Write(p []byte) (n int, err error) {
 	if changed && !w.changed {
 		w.changed = true
 		go func() {
-			w.output.SetOutputFor(w.logger)
+			w.output.Attach(w.logger)
 			if w.logger == nil {
 				log.Println("warning: logger details changed after kvlog.Attach")
 			} else {
-				w.logger.Println("warning: logger details after kvlog.Output.Attach")
+				w.logger.Println("warning: logger details after kvlog.Writer.Attach")
 			}
 		}()
 	}

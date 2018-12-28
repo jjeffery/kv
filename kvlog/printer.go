@@ -54,7 +54,6 @@ type simplePrinter struct {
 
 func (p *simplePrinter) Print(msg *logEntry) {
 	buf := pool.AllocBuffer()
-	defer pool.ReleaseBuffer(buf)
 	if len(msg.Prefix) > 0 {
 		buf.WriteString(msg.Prefix)
 		// no space here to match the way prefixes
@@ -82,6 +81,7 @@ func (p *simplePrinter) Print(msg *logEntry) {
 	}
 	buf.WriteRune('\n')
 	p.w.Write(buf.Bytes())
+	pool.ReleaseBuffer(buf)
 }
 
 // terminalPrinter is used to write log messages to an ANSI terminal.
@@ -154,7 +154,6 @@ func (p *terminalPrinter) resetFormat() {
 
 func (p *terminalPrinter) Print(msg *logEntry) {
 	p.buf = pool.AllocBuffer()
-	defer p.reset()
 
 	if len(msg.Prefix) > 0 {
 		p.writeString(msg.Prefix)
@@ -184,12 +183,14 @@ func (p *terminalPrinter) Print(msg *logEntry) {
 	}
 
 	if msg.Level != "" {
-		p.startFormat(msg.Action)
+		p.startFormat(msg.Effect)
 		p.writeString(msg.Level)
 		p.writeString(": ")
 		p.resetFormat()
 	}
 
+	// print to one less than the terminal width because some terminals
+	// don't format nicely otherwise (eg git bash)
 	width := p.width() - 1
 
 	// print message text with line wrapping
@@ -269,6 +270,7 @@ func (p *terminalPrinter) Print(msg *logEntry) {
 
 	p.writeRune('\n')
 	p.w.Write(p.buf.Bytes())
+	p.reset()
 }
 
 var colorEffects = map[string]string{
@@ -280,7 +282,7 @@ var colorEffects = map[string]string{
 	"magenta":        "35",
 	"cyan":           "36",
 	"white":          "37",
-	"gray":           "1;30",
+	"gray":           "1;30", // same as bright black
 	"grey":           "1;30",
 	"bright black":   "90",
 	"bright red":     "91",
