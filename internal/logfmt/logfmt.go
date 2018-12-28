@@ -270,7 +270,7 @@ func writeTextMarshalerValue(buf Writer, t encoding.TextMarshaler) {
 
 func needsQuote(c rune) bool {
 	// This test will result in more values being quoted than is strictly
-	// necesary for logfmt, but quoting all non-letter and non-digits makes
+	// necessary for logfmt, but quoting all non-letter and non-digits makes
 	// this compatible with the default colog extractor.
 	return !unicode.IsLetter(c) && !unicode.IsDigit(c) && c != '_'
 }

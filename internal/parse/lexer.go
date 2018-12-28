@@ -22,7 +22,7 @@ var (
 type lexer struct {
 	input []byte // input text, never modified
 	start int    // start position of current lexeme
-	end   int    // end postion of current lexeme
+	end   int    // end position of current lexeme
 	pos   int    // current position
 	token int    // current token
 }

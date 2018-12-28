@@ -336,7 +336,7 @@ func insertKeyAt(input []interface{}, index int, keyName interface{}) []interfac
 
 // this could be public and configurable
 var knownKeys = map[string]struct{}{
-	"msg":   struct{}{},
-	"level": struct{}{},
-	"id":    struct{}{},
+	"msg":   {},
+	"level": {},
+	"id":    {},
 }

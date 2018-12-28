@@ -236,8 +236,8 @@ func TestUnquote(t *testing.T) {
 			after:    21,
 		},
 		{
-			input:    b(`"too long\nto fit into\nthe buffer"`),
-			unquoted: "too long\nto fit into\nthe buffer",
+			input:    b(`"too long\n to fit into\n the buffer"`),
+			unquoted: "too long\n to fit into\n the buffer",
 			before:   8,
 			after:    0,
 		},
