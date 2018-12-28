@@ -1,9 +1,4 @@
-<<<<<<< HEAD
 # kv [![GoDoc](https://godoc.org/github.com/jjeffery/kv?status.svg)](https://godoc.org/github.com/jjeffery/kv) [![License](http://img.shields.io/badge/license-MIT-green.svg?style=flat)](https://raw.githubusercontent.com/jjeffery/kv/master/LICENSE.md) [![Build Status](https://travis-ci.org/jjeffery/kv.svg?branch=master)](https://travis-ci.org/jjeffery/kv) [![Coverage Status](https://coveralls.io/repos/github/jjeffery/kv/badge.svg?branch=master)](https://coveralls.io/github/jjeffery/kv?branch=master) [![GoReportCard](https://goreportcard.com/badge/github.com/jjeffery/kv)](https://goreportcard.com/report/github.com/jjeffery/kv)
-=======
-# kv [![GoDoc](https://godoc.org/github.com/jjeffery/kv?status.svg)](https://godoc.org/github.com/jjeffery/kv) [![License](http://img.shields.io/badge/license-MIT-green.svg?style=flat)](https://raw.githubusercontent.com/jjeffery/kv/master/LICENSE.md) [![Build Status](https://travis-ci.org/jjeffery/kv.svg?branch=master)](https://travis-ci.org/jjeffery/kv) [![Coverage Status](https://coveralls.io/repos/github/jjeffery/kv/badge.svg?branch=master)](https://coveralls.io/github/jjeffery/kv?branch=master)
-[![GoReportCard](https://goreportcard.com/badge/github.com/jjeffery/kv)](https://goreportcard.com/report/github.com/jjeffery/kv)
->>>>>>> 41610ec3da59c2a2f702594aadf3978f26892c08
 
 Package kv provides support for working with collections of key/value pairs.
 
