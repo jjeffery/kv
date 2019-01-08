@@ -192,6 +192,9 @@ func (p *terminalPrinter) Print(msg *logEntry) {
 	// print to one less than the terminal width because some terminals
 	// don't format nicely otherwise (eg git bash)
 	width := p.width() - 1
+	if width <= 0 {
+		width = defaultTerminalWidth
+	}
 
 	// print message text with line wrapping
 	for in := msg.Text; len(in) > 0; {
