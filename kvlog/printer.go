@@ -262,9 +262,7 @@ func (p *terminalPrinter) Print(msg *logEntry) {
 		if wsLen > 0 {
 			p.writeRune(' ')
 		}
-		p.startFormat("cyan")
 		p.write(key)
-		p.resetFormat()
 		p.writeRune('=')
 		p.startFormat("bright cyan")
 		p.write(val)
