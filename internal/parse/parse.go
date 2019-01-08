@@ -1,3 +1,4 @@
+// Package parse provides a parser for messages with key/value pairs.
 package parse
 
 import (
