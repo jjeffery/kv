@@ -113,8 +113,7 @@ func (c *contextT) String() string {
 // using the String method of the wrapped context.
 func (c *contextT) Format(f fmt.State, ch rune) {
 	if ch == 'v' && f.Flag('+') {
-		s := fmt.Sprint(c.ctx)
-		f.Write([]byte(s))
+		fmt.Fprint(f, c.ctx)
 		return
 	}
 	buf := pool.AllocBuffer()

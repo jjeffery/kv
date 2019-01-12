@@ -8,21 +8,14 @@ import (
 
 func TestWriteKeyValue(t *testing.T) {
 	tests := []struct {
-		key    interface{}
-		value  interface{}
-		want   string
-		prefix string
+		key   interface{}
+		value interface{}
+		want  string
 	}{
 		{
 			key:   "key",
 			value: "value",
 			want:  "key=value",
-		},
-		{
-			key:    "key",
-			value:  "value",
-			prefix: "prefix",
-			want:   "prefix key=value",
 		},
 		{
 			key:   "key=",
@@ -131,28 +124,27 @@ func TestWriteKeyValue(t *testing.T) {
 		},
 	}
 	for i, tt := range tests {
-		doTest := func(key interface{}, value interface{}, prefix string, want string) {
+		doTest := func(key interface{}, value interface{}, want string) {
 			var tt interface{} // hides outer tt to avoid error
 			_ = tt
 
 			var buf bytes.Buffer
-			buf.WriteString(prefix)
 			WriteKeyValue(&buf, key, value)
 			if got := buf.String(); got != want {
 				t.Errorf("%d: got `%s` want `%s`", i, got, want)
 			}
 		}
-		doTest(tt.key, tt.value, tt.prefix, tt.want)
+		doTest(tt.key, tt.value, tt.want)
 
 		if s, ok := tt.key.(string); ok {
 			// key is a string, test for []byte as well
 			key := []byte(s)
-			doTest(key, tt.value, tt.prefix, tt.want)
+			doTest(key, tt.value, tt.want)
 		}
 		if s, ok := tt.value.(string); ok {
 			// value is a string, test for []byte as well
 			value := []byte(s)
-			doTest(tt.key, value, tt.prefix, tt.want)
+			doTest(tt.key, value, tt.want)
 		}
 	}
 }

@@ -31,7 +31,6 @@ var (
 
 // Writer is an interface implemented by both bytes.Buffer and strings.Builder
 type Writer interface {
-	Len() int
 	Write(p []byte) (n int, err error)
 	WriteString(s string) (n int, err error)
 	WriteRune(r rune) (n int, err error)
@@ -39,9 +38,6 @@ type Writer interface {
 
 // WriteKeyValue writes a key/value pair to the writer.
 func WriteKeyValue(buf Writer, key, value interface{}) {
-	if buf.Len() > 0 {
-		buf.WriteRune(' ')
-	}
 	writeKey(buf, key)
 	buf.WriteRune('=')
 	WriteValue(buf, value)

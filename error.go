@@ -96,7 +96,12 @@ func (e *errorT) Error() string {
 	buf.Write(prevText)
 
 	list := dedup(e.list, prevList, e.ctxlist)
-	list.writeToBuffer(buf)
+	if len(list) > 0 {
+		if buf.Len() > 0 {
+			buf.WriteRune(' ')
+		}
+		list.writeToBuffer(buf)
+	}
 
 	return buf.String()
 }

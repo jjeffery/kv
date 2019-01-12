@@ -123,6 +123,9 @@ func (l List) clone(capacity int) List {
 func (l List) writeToBuffer(buf logfmt.Writer) {
 	fl := flattenFix(l)
 	for i := 0; i < len(fl); i += 2 {
+		if i > 0 {
+			buf.WriteRune(' ')
+		}
 		k := fl[i]
 		v := fl[i+1]
 		logfmt.WriteKeyValue(buf, k, v)
