@@ -290,3 +290,15 @@ func (m *Message) String() string {
 	}
 	return buf.String()
 }
+
+func BenchmarkParseBytes(b *testing.B) {
+	input := []byte(`message text a=1 b="value 2" c="3" d="value\n\tfour"`)
+	benchmarkParseBytes(input, b)
+}
+
+func benchmarkParseBytes(input []byte, b *testing.B) {
+	for n := 0; n < b.N; n++ {
+		msg := Bytes(input)
+		msg.Release()
+	}
+}

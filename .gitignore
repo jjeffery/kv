@@ -4,3 +4,5 @@ coverage.out
 debug
 debug.test
 .vscode/launch.json
+*.test
+*.test.exe

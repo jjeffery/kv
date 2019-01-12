@@ -3,6 +3,8 @@ package kv
 import (
 	"reflect"
 	"testing"
+
+	"github.com/jjeffery/kv/internal/pool"
 )
 
 func TestListMarshal(t *testing.T) {
@@ -90,26 +92,17 @@ func TestListClone(t *testing.T) {
 	}
 }
 
-/*
-func TestListWith(t *testing.T) {
-	tests := []struct {
-		list List
-		text string
-		err  *errorT
-	}{
-		{
-			list: List{"a", 1, "b", 2},
-			text: "message",
-			err: &errorT{
-				text: "message",
-				list: List{"a", 1, "b", 2},
-			},
-		},
-	}
-	for tn, tt := range tests {
-		if got, want := tt.list.NewError(tt.text).(*errorT), tt.err; !errEqual(got, want) {
-			t.Errorf("%d: got=%v, want=%v", tn, got, want)
-		}
+func BenchmarkList1(b *testing.B) {
+	benchmarkListString(With("a", 1), b)
+}
+func BenchmarkList5(b *testing.B) {
+	benchmarkListString(With("a", 1, "b", "value 2", "c", "3", "d", 4, "e", true), b)
+}
+
+func benchmarkListString(list List, b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		buf := pool.AllocBuffer()
+		list.writeToBuffer(buf)
+		pool.ReleaseBuffer(buf)
 	}
 }
-*/

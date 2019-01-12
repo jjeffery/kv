@@ -7,6 +7,8 @@ import (
 	"reflect"
 	"strconv"
 	"testing"
+
+	"github.com/jjeffery/kv"
 )
 
 func TestWriter(t *testing.T) {
@@ -338,4 +340,25 @@ func (e *logEntry) String() string {
 	p := simplePrinter{w: &buf}
 	p.Print(e)
 	return buf.String()
+}
+
+func BenchmarkStdLog(b *testing.B) {
+	logger := log.New(ioutil.Discard, "testing", log.LstdFlags)
+	benchmarkLog(b, logger)
+}
+
+func BenchmarkKVLog(b *testing.B) {
+	logger := log.New(ioutil.Discard, "testing", log.LstdFlags)
+	w := NewWriter(ioutil.Discard)
+	w.Attach(logger)
+	benchmarkLog(b, logger)
+}
+
+func benchmarkLog(b *testing.B, logger *log.Logger) {
+	b.ReportAllocs()
+	kv := kv.With("n", 0)
+	for n := 0; n < b.N; n++ {
+		kv[1] = n
+		logger.Println("message", kv)
+	}
 }
