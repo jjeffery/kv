@@ -118,6 +118,11 @@ func SetOutput(writer io.Writer) {
 	Std.SetOutput(writer)
 }
 
+// Suppress instructs the Std writer to suppress any message with the specified level.
+func Suppress(levels ...string) {
+	Std.Suppress(levels...)
+}
+
 // Levels returns a list of levels and their associated actions.
 func (w *Writer) Levels() map[string]string {
 	w.mutex.Lock()
