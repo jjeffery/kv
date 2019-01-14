@@ -354,11 +354,19 @@ func BenchmarkKVLog(b *testing.B) {
 	benchmarkLog(b, logger)
 }
 
+func BenchmarkSuppress(b *testing.B) {
+	logger := log.New(ioutil.Discard, "testing", log.LstdFlags)
+	w := NewWriter(ioutil.Discard)
+	w.Attach(logger)
+	w.Suppress("info")
+	benchmarkLog(b, logger)
+}
+
 func benchmarkLog(b *testing.B, logger *log.Logger) {
 	b.ReportAllocs()
 	kv := kv.With("n", 0)
 	for n := 0; n < b.N; n++ {
 		kv[1] = n
-		logger.Println("message", kv)
+		logger.Println("info: message", kv)
 	}
 }
