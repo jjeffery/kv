@@ -44,13 +44,6 @@ func WriteKeyValue(buf Writer, key, value interface{}) {
 }
 
 func writeKey(buf Writer, value interface{}) {
-	defer func() {
-		if r := recover(); r != nil {
-			if buf != nil {
-				buf.Write(bytesPanic)
-			}
-		}
-	}()
 	switch v := value.(type) {
 	case nil:
 		writeBytesKey(buf, bytesNull)
@@ -133,6 +126,8 @@ func writeStringKey(buf Writer, s string) {
 }
 
 func writeTextMarshalerKey(buf Writer, t encoding.TextMarshaler) {
+	defer recoverFromPanic(buf)
+
 	b, err := t.MarshalText()
 	if err != nil {
 		buf.Write(bytesError)
@@ -141,15 +136,16 @@ func writeTextMarshalerKey(buf Writer, t encoding.TextMarshaler) {
 	writeBytesKey(buf, b)
 }
 
+func recoverFromPanic(buf Writer) {
+	if r := recover(); r != nil {
+		if buf != nil {
+			buf.Write(bytesPanic)
+		}
+	}
+}
+
 // WriteValue writes the value to the writer.
 func WriteValue(buf Writer, value interface{}) {
-	defer func() {
-		if r := recover(); r != nil {
-			if buf != nil {
-				buf.Write(bytesPanic)
-			}
-		}
-	}()
 	switch v := value.(type) {
 	case nil:
 		writeBytesValue(buf, bytesNull)
@@ -256,6 +252,7 @@ func writeStringValue(buf Writer, s string) {
 }
 
 func writeTextMarshalerValue(buf Writer, t encoding.TextMarshaler) {
+	defer recoverFromPanic(buf)
 	b, err := t.MarshalText()
 	if err != nil {
 		buf.Write(bytesError)
