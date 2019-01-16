@@ -88,13 +88,14 @@ type levelInfo struct {
 // the output. The message is then formatted and printed to the output writer. If the
 // output writer is a terminal, it formats the message for improved readability.
 type Writer struct {
-	mutex        sync.Mutex        // controls exclusive access
-	printer      printer           // used for printing to the output writer
-	suppress     [][]byte          // levels that should be suppressed
-	display      []*levelInfo      // levels that should be displayed
-	levels       map[string]string // copy of original level map
-	handlers     []Handler         // list of handlers to process unsuppressed messages
-	entryHandler func(*logEntry)   // for testing
+	mutex        sync.Mutex          // controls exclusive access
+	printer      printer             // used for printing to the output writer
+	suppress     [][]byte            // levels that should be suppressed
+	suppressMap  map[string]struct{} // Levels that should be suppressed
+	display      []*levelInfo        // levels that should be displayed
+	levels       map[string]string   // copy of original level map
+	handlers     []Handler           // list of handlers to process unsuppressed messages
+	entryHandler func(*logEntry)     // for testing
 }
 
 // NewWriter creates writer that logs messages to out. If the output writer is a terminal
@@ -157,6 +158,7 @@ func (w *Writer) SetLevel(level string, effect string) {
 
 func (w *Writer) setLevels(levels map[string]string) {
 	w.suppress = nil
+	w.suppressMap = make(map[string]struct{})
 	w.display = nil
 	w.levels = make(map[string]string)
 
@@ -167,6 +169,7 @@ func (w *Writer) setLevels(levels map[string]string) {
 		w.levels[level] = effect
 		if effect == "hide" || effect == "suppress" || effect == "ignore" {
 			w.suppress = append(w.suppress, levelb)
+			w.suppressMap[level] = struct{}{}
 			continue
 		}
 
@@ -187,6 +190,12 @@ func (w *Writer) Suppress(levels ...string) {
 		p[level] = "hide"
 	}
 	w.SetLevels(p)
+}
+
+// IsSuppressed reports true if level should be suppressed.
+func (w *Writer) IsSuppressed(level string) bool {
+	_, ok := w.suppressMap[level]
+	return ok
 }
 
 // Handle registers a handler that will be called for every logging
