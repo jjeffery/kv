@@ -77,6 +77,7 @@ func (p *simplePrinter) Print(msg *logEntry) {
 	}
 	buf.Write(msg.Text)
 	for i := 0; i < len(msg.List); i += 2 {
+		buf.WriteRune(' ')
 		logfmt.WriteKeyValue(buf, msg.List[i], msg.List[i+1])
 	}
 	buf.WriteRune('\n')
