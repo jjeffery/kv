@@ -33,6 +33,9 @@ func unquote(input []byte, buf []byte) (unquoted []byte, remainder []byte) {
 	if len(buf) > 0 {
 		unquoted = buf[:0]
 	}
+	// BUG(jpj): Uses the unsafe package to cast a byte slice to a string.
+	// This could break in future versions of Go. The reason for this conversion
+	// is that there is no equivalent to strconv.UnquoteChar that works on a byte slice.
 	strinput := toString(input)
 	for len(strinput) > 0 {
 		r, mb, tail, err := strconv.UnquoteChar(strinput, quote)
