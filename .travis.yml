@@ -3,6 +3,10 @@ go:
   - "1.12"
   - "1.11"
 
+install:
+  - go get golang.org/x/tools/cmd/cover
+  - go get github.com/mattn/goveralls
+  
 script:
   - go test -race ./...
   - go test -v ./... -covermode=count -coverprofile=coverage.out
