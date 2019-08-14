@@ -10,7 +10,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/jjeffery/kv"
 	"github.com/jjeffery/kv/internal/parse"
 )
 
@@ -57,7 +56,7 @@ type Message struct {
 	File      string    // File name and line number from the logger
 	Level     string    // Message level (eg "debug")
 	Text      string    // Message text
-	List      kv.List   // Key/value pairs
+	List      []string  // Key/value pairs
 }
 
 // Handler is the interface to implement in order to handle structured
@@ -289,7 +288,7 @@ func (w *Writer) handler(entry *logEntry) {
 						msg.File = string(entry.File)
 					}
 					if len(entry.List) > 0 {
-						msg.List = make(kv.List, len(entry.List))
+						msg.List = make([]string, len(entry.List))
 						for i, v := range entry.List {
 							msg.List[i] = string(v)
 						}
