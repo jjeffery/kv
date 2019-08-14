@@ -189,7 +189,7 @@ func TestParse(t *testing.T) {
 	for tn, tt := range tests {
 		t.Run(fmt.Sprint(tn), func(t *testing.T) {
 			msg := Bytes([]byte(tt.input))
-			defer msg.Release()
+			defer releaseMessage(t, msg)
 
 			if got, want := msg, &tt.msg; !msgEqual(got, want) {
 				t.Errorf("%d:\n got=%v\nwant=%v", tn, got, want)
@@ -259,6 +259,32 @@ func TestUnquote(t *testing.T) {
 		if got, want := len(buf), tt.after; got != want {
 			t.Errorf("%d: got=%v want=%v", tn, got, want)
 		}
+	}
+}
+
+// releaseMessage releases a message and ensures that its
+// contents have been erased
+func releaseMessage(t *testing.T, msg *Message) {
+	t.Helper()
+	msg.Release()
+
+	if got := msg.Text; got != nil {
+		t.Errorf("got=%v want=nil", got)
+	}
+	for i, v := range msg.List {
+		if got := v; got != nil {
+			t.Errorf("%d: got=%v want=nil", i, got)
+		}
+	}
+
+	for i, ch := range msg.buf[:] {
+		if got, want := ch, byte(0); got != want {
+			t.Errorf("%d: got=%v want=%v", i, got, want)
+		}
+	}
+
+	if got, want := msg.used, 0; got != want {
+		t.Errorf("got=%v want=%v", got, want)
 	}
 }
 

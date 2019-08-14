@@ -283,7 +283,9 @@ func TestOutput(t *testing.T) {
 	output.Suppress("debug")
 	var entry *logEntry
 	output.entryHandler = func(e *logEntry) {
-		entry = e
+		// need to clone the entry, because it gets zeroed out
+		// after this handler is called
+		entry = cloneEntry(e)
 	}
 
 	for tn, tt := range tests {
@@ -295,6 +297,40 @@ func TestOutput(t *testing.T) {
 				t.Errorf("\n got=%+v\nwant=%+v", got, want)
 			}
 		})
+	}
+}
+
+func cloneByteSlice(slice []byte) []byte {
+	if slice == nil {
+		return nil
+	}
+	clone := make([]byte, len(slice))
+	copy(clone, slice)
+	return clone
+}
+
+func cloneByteSliceSlice(slice [][]byte) [][]byte {
+	if slice == nil {
+		return nil
+	}
+	clone := make([][]byte, len(slice))
+	for i, s := range slice {
+		clone[i] = cloneByteSlice(s)
+	}
+	return clone
+}
+
+func cloneEntry(e *logEntry) *logEntry {
+	return &logEntry{
+		Timestamp: e.Timestamp,
+		Prefix: e.Prefix,
+		Date: cloneByteSlice(e.Date),
+		Time: cloneByteSlice(e.Time),
+		File: cloneByteSlice(e.File),
+		Level: e.Level,
+		Effect: e.Effect,
+		Text: cloneByteSlice(e.Text),
+		List: cloneByteSliceSlice(e.List),
 	}
 }
 
