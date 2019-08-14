@@ -7,14 +7,23 @@ import (
 )
 
 const (
-	bufLength = 80
+	// bufLength is the length of the buffer used for unquoting messages that
+	// have one or more escape characters (\) in them. If a message reuires more
+	// space than this, additional memory will need to be allocated.
+	bufLength = 256
+
+	// typicalKeywordCount is the number of keywords that can be in a
+	// message before it becomes necessary to allocate additional memory.
+	// The value is set to a number higher than expected in a typical
+	// log message.
+	typicalKeywordCount = 8
 )
 
 var (
 	messagePool = sync.Pool{
 		New: func() interface{} {
 			return &Message{
-				List: make([][]byte, 0, 16),
+				List: make([][]byte, 0, 2*typicalKeywordCount),
 			}
 		},
 	}

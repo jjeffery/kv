@@ -7,16 +7,16 @@ import (
 	"unsafe"
 )
 
+var (
+	errorIndicator = []byte("???")
+)
+
 // unquote the input. If possible the unquoted value points to the same
 // backing array as input. Otherwise it points to buf. The remainder is
 // the unused portion of buf.
 func unquote(input []byte, buf []byte) (unquoted []byte, remainder []byte) {
-	var (
-		errorIndicator = []byte("???")
-	)
 	if len(input) < 2 {
 		return errorIndicator, buf
-
 	}
 	quote := input[0]
 	input = input[1:]

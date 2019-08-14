@@ -322,7 +322,40 @@ func BenchmarkParseBytes(b *testing.B) {
 	benchmarkParseBytes(input, b)
 }
 
+func BenchmarkParseBytesNoQuotes1(b *testing.B) {
+	input := []byte(`message text a=1`)
+	benchmarkParseBytes(input, b)
+}
+
+func BenchmarkParseBytesNoQuotes4(b *testing.B) {
+	input := []byte(`message text a=1 b=12 c=abcdef fourth=last_value`)
+	benchmarkParseBytes(input, b)
+}
+
+func BenchmarkParseBytesQuotesNoEscape1(b *testing.B) {
+	input := []byte(`message text a="1"`)
+	benchmarkParseBytes(input, b)
+}
+
+func BenchmarkParseBytesQuotesNoEscape10(b *testing.B) {
+	input := []byte(`message text a="1" b="2" c="3" d="4" e="5" f="6" g="7" h="8" i="9" j="10"`)
+	benchmarkParseBytes(input, b)
+}
+
+func BenchmarkParseBytesQuotesEscape10(b *testing.B) {
+	input := []byte(`message text a="\"1" b="\"2" c="\"3" d="\"4" e="\"5" f="\"6" g="\"7" h="\"8" i="\"9" j="\"10"`)
+	benchmarkParseBytes(input, b)
+}
+
+func BenchmarkParseBytesQuotesEscape10Long(b *testing.B) {
+	input := []byte(`message text a="\"1234567890" b="\"2345678901" c="\"3456789012" d="\"4567890123" e="\"5678901234"` +
+		` f="\"6789012345" g="\"7890123456" h="\"8901234567" i="\"9012345678" j="\"0123456789"`)
+	benchmarkParseBytes(input, b)
+}
+
 func benchmarkParseBytes(input []byte, b *testing.B) {
+	b.ReportAllocs()
+	b.ResetTimer()
 	for n := 0; n < b.N; n++ {
 		msg := Bytes(input)
 		msg.Release()
